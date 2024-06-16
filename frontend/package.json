@@ -1,0 +1,25 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "generate-schema:server": "json-refs resolve ../schemas/server-message.yaml | js-yaml | json-schema-to-zod | prettier --parser typescript > src/schema/server-message.ts",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "solid-js": "^1.8.15",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "js-yaml": "^4.1.0",
+    "json-refs": "^3.0.15",
+    "json-schema-to-zod": "^2.1.0",
+    "prettier": "^3.3.2",
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0",
+    "vite-plugin-solid": "^2.10.2"
+  }
+}

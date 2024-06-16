@@ -1,0 +1,20 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: request-failed.yaml
+description: Request failed event
+type: object
+properties:
+  kind:
+    const: request-failed
+  data:
+    type: object
+    properties:
+      requestKind:
+        type: string
+      errorMessage:
+        type: string
+    required:
+      - requestKind
+      - errorMessage
+required: 
+  - kind
+  - data

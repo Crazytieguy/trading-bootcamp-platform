@@ -1,0 +1,28 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: market-state.yaml
+description: The state of a market
+type: object
+properties:
+  kind:
+    const: market-state
+  data:
+    allOf:
+      - $ref: market.yaml
+    type: object
+    properties:
+      tradeHistory:
+        type: array
+        description: A list of trades that have occurred in this market
+        items:
+          $ref: trade.yaml
+      openOrders:
+        type: object
+        description: A map of order IDs to orders
+        additionalProperties:
+          $ref: order.yaml
+    required:
+      - tradeHistory
+      - openOrders
+required:
+  - kind
+  - data

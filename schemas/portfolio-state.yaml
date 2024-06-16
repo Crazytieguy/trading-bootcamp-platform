@@ -1,0 +1,32 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: portfolio-state.yaml
+description: Portfolio state
+type: object
+properties:
+  kind:
+    const: portfolio-state
+  data:
+    type: object
+    properties:
+      totalBalance:
+        type: string
+      availableBalance:
+        type: string
+      markets:
+        type: object
+        description: A map of market IDs to exposure details
+        additionalProperties:
+          type: object
+          properties:
+            exposure:
+              type: string
+            orders:
+              type: number
+              minimum: 0
+    required:
+      - totalBalance
+      - availableBalance
+      - markets
+required:
+  - kind
+  - data

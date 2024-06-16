@@ -1,0 +1,44 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: market.yaml
+description: Market definition
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  description:
+    type: string
+  ownerId:
+    type: string
+  status:
+    anyOf:
+      - type: object
+        properties:
+          open:
+            const: true
+        required:
+          - open
+      - type: object
+        properties:
+          open:
+            const: false
+          settlePrice:
+            type: string
+        required:
+          - open
+          - settlePrice
+  minSettlement:
+    type: number
+    multipleOf: 0.001
+  maxSettlement:
+    type: number
+    multipleOf: 0.001
+required:
+  - id
+  - name
+  - description
+  - ownerId
+  - status
+  - minSettlement
+  - maxSettlement

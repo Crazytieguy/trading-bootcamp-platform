@@ -1,0 +1,20 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: order-cancelled.yaml
+description: Order cancelled event
+type: object
+properties:
+  kind:
+    const: order-cancelled
+  data:
+    type: object
+    properties:
+      id:
+        type: string
+      marketId:
+        type: string
+    required:
+      - id
+      - marketId
+required:
+  - kind
+  - data

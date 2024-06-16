@@ -1,0 +1,41 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: order-filled.yaml
+description: Order filled event
+type: object
+properties:
+  kind:
+    const: order-filled
+  data:
+    type: object
+    properties:
+      id:
+        type: string
+      marketId:
+        type: string
+    required:
+      - id
+      - marketId
+    anyOf:
+      - type: object
+        properties:
+          fullyFilled:
+            const: true
+        required:
+          - fullyFilled
+      - type: object
+        properties:
+          fullyFilled:
+            const: false
+          sizeFilled:
+            type: number
+            multipleOf: 0.001
+          sizeRemaining:
+            type: number
+            multipleOf: 0.001
+        required:
+          - fullyFilled
+          - sizeFilled
+          - sizeRemaining
+required:
+  - kind
+  - data
