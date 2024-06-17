@@ -1,4 +1,5 @@
 syntax = "proto3";
+package websocket_api;
 
 import "portfolio.proto";
 import "market.proto";

@@ -1,4 +1,5 @@
 syntax = "proto3";
+package websocket_api;
 
 message Portfolio {
   string total_balance = 1;

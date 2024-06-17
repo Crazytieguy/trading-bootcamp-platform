@@ -1,4 +1,5 @@
 syntax = "proto3";
+package websocket_api;
 
 message RequestFailed {
   RequestDetails request_details = 1;

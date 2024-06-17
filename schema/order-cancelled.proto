@@ -1,4 +1,5 @@
 syntax = "proto3";
+package websocket_api;
 
 message OrderCancelled {
   string id = 1;

@@ -1,4 +1,5 @@
 syntax = "proto3";
+package websocket_api;
 
 // Order filled event
 message OrderFilled {
