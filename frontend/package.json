@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "generate-schema": "pbjs -t static-module -w commonjs -o src/schema.js ../schema/server-message.proto && pbts -o src/schema.d.ts src/schema.js",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev": "generate-schema && vite",
+    "generate-schema": "pbjs -t static-module -w commonjs -o src/schema/index.js ../schema/server-message.proto && pbts -o src/schema/index.d.ts src/schema/index.js",
+    "build": "generate-schema && tsc && vite build",
+    "preview": "generate-schema && vite preview"
   },
   "dependencies": {
     "protobufjs": "^7.3.2",
