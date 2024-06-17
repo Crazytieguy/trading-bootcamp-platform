@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+message Trade {
+  string market_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string price = 3;
+  string size = 4;
+  string buyer = 5;
+  string seller = 6;
+}

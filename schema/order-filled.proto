@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+// Order filled event
+message OrderFilled {
+  string id = 1;
+  string market_id = 2;
+  oneof fill_kind {
+    Full full = 3;
+    PartialFillDetails partial = 4;
+  }
+
+  message Full {}
+
+  message PartialFillDetails {
+    string size_filled = 1;
+    string size_remaining = 2;
+  }
+}

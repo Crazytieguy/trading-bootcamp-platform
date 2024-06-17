@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+message Portfolio {
+  string total_balance = 1;
+  string available_balance = 2;
+  repeated MarketExposure marketExposures = 3;
+
+  message MarketExposure {
+    string market_id = 1;
+    string position = 2;
+    uint32 orders = 3;
+  }
+}

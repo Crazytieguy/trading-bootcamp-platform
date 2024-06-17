@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+message RequestFailed {
+  RequestDetails request_details = 1;
+  ErrorDetails error_details = 2;
+
+  message RequestDetails {
+    string kind = 1;
+  }
+  message ErrorDetails {
+    string message = 1;
+  }
+}
+
+

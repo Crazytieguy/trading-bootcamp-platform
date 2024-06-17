@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+import "trade.proto";
+import "order.proto";
+
+// Market
+message Market {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string owner_id = 4;
+  string min_settlement = 5;
+  string max_settlement = 6;
+
+  oneof status {
+    Open open = 7;
+    Closed closed = 8;
+  }
+
+  optional State state = 9;
+
+  message State {
+    repeated Trade tradeHistory = 2;
+    repeated Order openOrders = 3;
+  }
+
+  message Open {}
+  message Closed {
+    string settle_price = 1;
+  }
+}

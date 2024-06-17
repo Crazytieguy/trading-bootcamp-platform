@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message OrderCancelled {
+  string id = 1;
+  string marketId = 2;
+}

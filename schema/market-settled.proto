@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message MarketSettled {
+  string id = 1;
+  string settlePrice = 2;
+}
