@@ -5,6 +5,9 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.86"
+axum = { version = "0.7.5", features = ["macros", "ws"] }
+axum-extra = { version = "0.9.3", features = ["typed-header"] }
+dotenvy = "0.15.7"
 jsonwebtoken = "9.3.0"
 prost = "0.12.6"
 prost-types = "0.12.6"
@@ -12,6 +15,9 @@ reqwest = { version = "0.12.5", features = ["json"] }
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.117"
 tokio = { version = "1.38.0", features = ["full"] }
+tower-http = { version = "0.5.2", features = ["trace"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [build-dependencies]
 prost-build = "0.12.6"

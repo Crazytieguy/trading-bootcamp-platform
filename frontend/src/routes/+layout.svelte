@@ -1,39 +1,25 @@
 <script lang="ts">
+	import { kinde } from '$lib/auth';
 	import { AppBar, AppShell } from '@skeletonlabs/skeleton';
 	import '../app.postcss';
+
+	const isAuthenticatedPromise = kinde.isAuthenticated();
 </script>
 
 <AppShell>
 	<svelte:fragment slot="header">
 		<AppBar>
 			<svelte:fragment slot="lead">
-				<strong class="text-xl uppercase">Skeleton</strong>
+				<strong class="text-xl uppercase">Trading Bootcamp</strong>
 			</svelte:fragment>
 			<svelte:fragment slot="trail">
-				<a
-					class="btn btn-sm variant-ghost-surface"
-					href="https://discord.gg/EXqV7W8MtY"
-					target="_blank"
-					rel="noreferrer"
-				>
-					Discord
-				</a>
-				<a
-					class="btn btn-sm variant-ghost-surface"
-					href="https://twitter.com/SkeletonUI"
-					target="_blank"
-					rel="noreferrer"
-				>
-					Twitter
-				</a>
-				<a
-					class="btn btn-sm variant-ghost-surface"
-					href="https://github.com/skeletonlabs/skeleton"
-					target="_blank"
-					rel="noreferrer"
-				>
-					GitHub
-				</a>
+				{#await isAuthenticatedPromise then isAuthenticated}
+					{#if isAuthenticated}
+						<button class="btn variant-filled-primary" on:click={kinde.logout}>Logout</button>
+					{:else}
+						<button class="btn variant-filled-primary" on:click={kinde.login}>Login</button>
+					{/if}
+				{/await}
 			</svelte:fragment>
 		</AppBar>
 	</svelte:fragment>
