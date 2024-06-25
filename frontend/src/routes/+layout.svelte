@@ -7,7 +7,7 @@
 </script>
 
 <ModeWatcher />
-<header class="sticky border bg-secondary">
+<header class="sticky border-b-2 bg-primary/10">
 	<nav>
 		<ul class="flex justify-between p-4 align-bottom">
 			<li class="my-auto">
