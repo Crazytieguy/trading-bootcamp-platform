@@ -5,9 +5,9 @@ import "google/protobuf/timestamp.proto";
 
 message Order {
   string id = 1;
-  string marketId = 2;
-  string ownerId = 3;
-  google.protobuf.Timestamp createdAt = 4;
+  string market_id = 2;
+  string owner_id = 3;
+  google.protobuf.Timestamp created_at = 4;
   string price = 5;
   string size = 6;
   Side side = 7;

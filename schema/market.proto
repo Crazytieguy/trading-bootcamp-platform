@@ -1,6 +1,7 @@
 syntax = "proto3";
 package websocket_api;
 
+import "google/protobuf/timestamp.proto";
 import "trade.proto";
 import "order.proto";
 
@@ -10,19 +11,20 @@ message Market {
   string name = 2;
   string description = 3;
   string owner_id = 4;
-  string min_settlement = 5;
-  string max_settlement = 6;
+  google.protobuf.Timestamp created_at = 5;
+  string min_settlement = 6;
+  string max_settlement = 7;
 
   oneof status {
-    Open open = 7;
-    Closed closed = 8;
+    Open open = 8;
+    Closed closed = 9;
   }
 
-  optional State state = 9;
+  optional State state = 10;
 
   message State {
-    repeated Trade tradeHistory = 2;
-    repeated Order openOrders = 3;
+    repeated Trade trade_history = 1;
+    repeated Order open_orders = 2;
   }
 
   message Open {}

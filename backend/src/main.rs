@@ -10,6 +10,8 @@ use axum_extra::{
     TypedHeader,
 };
 use backend::auth;
+use migration::{Migrator, MigratorTrait};
+use sea_orm::Database;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -25,6 +27,8 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
     auth::init().await?;
+    let db = Database::connect(std::env::var("DATABASE_URL")?).await?;
+    Migrator::up(&db, None).await?;
 
     let app = Router::new()
         .route("/api", get(handler))

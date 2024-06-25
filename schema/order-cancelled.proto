@@ -3,5 +3,5 @@ package websocket_api;
 
 message OrderCancelled {
   string id = 1;
-  string marketId = 2;
+  string market_id = 2;
 }

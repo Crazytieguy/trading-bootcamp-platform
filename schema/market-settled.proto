@@ -3,5 +3,5 @@ package websocket_api;
 
 message MarketSettled {
   string id = 1;
-  string settlePrice = 2;
+  string settle_price = 2;
 }

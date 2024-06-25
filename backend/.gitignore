@@ -1,2 +1,4 @@
 .env
 target/
+db.sqlite
+db.sqlite-journal
