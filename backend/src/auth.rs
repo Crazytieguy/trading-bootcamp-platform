@@ -21,9 +21,17 @@ struct AuthConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum Permission {
+    #[serde(rename = "modify:balance")]
+    ModifyBalance,
+    #[serde(rename = "trade")]
+    Trade,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     sub: String,
-    permissions: Vec<String>,
+    permissions: Vec<Permission>,
 }
 
 type AuthConfigFuture = impl Future<Output = AuthConfig>;

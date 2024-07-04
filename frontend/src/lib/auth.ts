@@ -24,5 +24,13 @@ export const kinde = {
 	async isAuthenticated() {
 		const kinde = await kindePromise;
 		return kinde.isAuthenticated();
+	},
+	async getToken() {
+		const kinde = await kindePromise;
+		return kinde.getToken();
+	},
+	async getIdToken() {
+		const kinde = await kindePromise;
+		return kinde.getIdToken();
 	}
 };
