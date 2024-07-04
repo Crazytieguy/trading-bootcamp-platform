@@ -7,7 +7,7 @@ message Portfolio {
   repeated MarketExposure market_exposures = 3;
 
   message MarketExposure {
-    string market_id = 1;
+    uint64 market_id = 1;
     string position = 2;
     uint32 orders = 3;
   }

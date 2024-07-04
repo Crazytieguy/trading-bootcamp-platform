@@ -2,6 +2,6 @@ syntax = "proto3";
 package websocket_api;
 
 message OrderCancelled {
-  string id = 1;
-  string market_id = 2;
+  uint64 id = 1;
+  uint64 market_id = 2;
 }

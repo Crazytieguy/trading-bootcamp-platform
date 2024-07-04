@@ -4,14 +4,7 @@ use axum::{
     routing::get,
     Router,
 };
-use axum_extra::{
-    headers::{authorization::Bearer, Authorization},
-    typed_header::TypedHeaderRejection,
-    TypedHeader,
-};
-use backend::auth;
-use migration::{Migrator, MigratorTrait};
-use sea_orm::Database;
+use backend::auth::Claims;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -26,9 +19,6 @@ async fn main() -> anyhow::Result<()> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-    auth::init().await?;
-    let db = Database::connect(std::env::var("DATABASE_URL")?).await?;
-    Migrator::up(&db, None).await?;
 
     let app = Router::new()
         .route("/api", get(handler))
@@ -40,15 +30,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 #[axum::debug_handler]
-async fn handler(
-    authorization: Result<TypedHeader<Authorization<Bearer>>, TypedHeaderRejection>,
-) -> Response {
-    let Ok(TypedHeader(authorization)) = authorization else {
-        return (StatusCode::UNAUTHORIZED, "Missing Authorization header").into_response();
-    };
-    let Ok(claims) = auth::validate_jwt(authorization.token()) else {
-        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
-    };
+async fn handler(claims: Claims) -> Response {
     let Ok(claims) = serde_json::to_string(&claims) else {
         return (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response();
     };

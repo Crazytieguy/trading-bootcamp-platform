@@ -3,8 +3,8 @@ package websocket_api;
 
 // Order filled event
 message OrderFilled {
-  string id = 1;
-  string market_id = 2;
+  uint64 id = 1;
+  uint64 market_id = 2;
   oneof fill_kind {
     Full full = 3;
     PartialFillDetails partial = 4;

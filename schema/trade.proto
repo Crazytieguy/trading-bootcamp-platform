@@ -4,10 +4,11 @@ package websocket_api;
 import "google/protobuf/timestamp.proto";
 
 message Trade {
-  string market_id = 1;
-  google.protobuf.Timestamp created_at = 2;
-  string price = 3;
-  string size = 4;
-  string buyer = 5;
-  string seller = 6;
+  uint64 id = 1;
+  uint64 market_id = 2;
+  google.protobuf.Timestamp created_at = 3;
+  string price = 4;
+  string size = 5;
+  string buyer = 6;
+  string seller = 7;
 }
