@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS "user" (
 );
 CREATE TABLE IF NOT EXISTS "market" (
   "id" INTEGER PRIMARY KEY,
-  "name" text NOT NULL,
+  "name" text NOT NULL UNIQUE,
   "description" text NOT NULL,
   "owner_id" text NOT NULL,
   "created_at" datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS "order" (
 );
 CREATE INDEX "idx_order_market_id" ON "order" ("market_id");
 CREATE INDEX "idx_order_owner_id" ON "order" ("owner_id");
-CREATE INDEX "idx_order_market_id_side_price" ON "order" ("market_id", "side", "price");
+CREATE INDEX "idx_order_market_id_side_price" ON "order" ("market_id", "side", CAST("price" AS REAL));
 CREATE TABLE IF NOT EXISTS "trade" (
   "id" INTEGER PRIMARY KEY,
   "market_id" INTEGER NOT NULL,

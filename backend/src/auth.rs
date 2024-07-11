@@ -1,3 +1,5 @@
+use std::{env, future::Future, pin::Pin};
+
 use async_once_cell::Lazy;
 use axum::{
     async_trait,
@@ -12,7 +14,6 @@ use axum_extra::{
 };
 use jsonwebtoken::{jwk::JwkSet, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
-use std::{env, future::Future, pin::Pin};
 
 struct AuthConfig {
     issuer: String,

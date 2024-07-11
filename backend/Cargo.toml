@@ -3,6 +3,8 @@ name = "backend"
 version = "0.1.0"
 edition = "2021"
 
+[profile.dev.package.sqlx-macros]
+opt-level = 3
 
 [dependencies]
 anyhow = "1.0.86"
@@ -20,7 +22,12 @@ tower-http = { version = "0.5.2", features = ["trace"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 async-once-cell = "0.5.3"
-sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite"] }
+sqlx = { version = "0.7.4", features = [
+  "runtime-tokio",
+  "sqlite",
+  "macros",
+  "migrate",
+] }
 rust_decimal = "1.35.0"
 
 [build-dependencies]
