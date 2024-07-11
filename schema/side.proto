@@ -1,0 +1,8 @@
+syntax = "proto3";
+package websocket_api;
+
+enum Side {
+  UNKNOWN = 0;
+  BID = 1;
+  OFFER = 2;
+}

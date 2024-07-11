@@ -1,14 +1,10 @@
 syntax = "proto3";
 package websocket_api;
 
-import "google/protobuf/timestamp.proto";
 import "side.proto";
 
-message Order {
-  uint64 id = 1;
+message CreateOrder {
   uint64 market_id = 2;
-  string owner_id = 3;
-  google.protobuf.Timestamp created_at = 4;
   string price = 5;
   string size = 6;
   Side side = 7;

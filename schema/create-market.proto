@@ -1,0 +1,9 @@
+syntax = "proto3";
+package websocket_api;
+
+message CreateMarket {
+  string name = 1;
+  string description = 2;
+  string min_settlement = 3;
+  string max_settlement = 4;
+}

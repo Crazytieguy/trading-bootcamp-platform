@@ -43,3 +43,15 @@ CREATE TABLE IF NOT EXISTS "trade" (
 CREATE INDEX "idx_trade_market_id" ON "trade" ("market_id");
 CREATE INDEX "idx_trade_buyer_id" ON "trade" ("buyer_id");
 CREATE INDEX "idx_trade_seller_id" ON "trade" ("seller_id");
+CREATE TABLE IF NOT EXISTS "payment" (
+  "id" INTEGER PRIMARY KEY,
+  "payer_id" text NOT NULL,
+  "recipient_id" text NOT NULL,
+  "amount" text NOT NULL,
+  "note" text NOT NULL,
+  "created_at" datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  FOREIGN KEY ("payer_id") REFERENCES "user" ("id"),
+  FOREIGN KEY ("recipient_id") REFERENCES "user" ("id")
+);
+CREATE INDEX "idx_payment_payer_id" ON "payment" ("payer_id");
+CREATE INDEX "idx_payment_recipient_id" ON "payment" ("recipient_id");

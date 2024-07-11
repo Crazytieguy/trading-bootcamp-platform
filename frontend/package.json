@@ -3,7 +3,7 @@
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
-		"generate-schema": "pbjs -t static-module -w commonjs -o src/lib/schema/index.js ../schema/server-message.proto && pbts -o src/lib/schema/index.d.ts src/lib/schema/index.js",
+		"generate-schema": "pbjs -t static-module -w commonjs -o src/lib/schema/index.js ../schema/server-message.proto ../schema/client-message.proto && pbts -o src/lib/schema/index.d.ts src/lib/schema/index.js",
 		"dev": "pnpm generate-schema && vite dev",
 		"build": "pnpm generate-schema && vite build",
 		"preview": "vite preview",

@@ -4,7 +4,7 @@ use axum::{
     routing::get,
     Router,
 };
-use backend::{auth::Claims, db};
+use backend::{auth::Claims, db::DB};
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -20,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let _pool = db::init().await?;
+    let _db = DB::init().await?;
 
     let app = Router::new()
         .route("/api", get(example_auth_handler))
