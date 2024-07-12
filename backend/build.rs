@@ -8,5 +8,6 @@ fn main() -> Result<()> {
         &["../schema"],
     )?;
     println!("cargo:rerun-if-changed=migrations");
+    println!("cargo:rerun-if-changed=../schema/*");
     Ok(())
 }

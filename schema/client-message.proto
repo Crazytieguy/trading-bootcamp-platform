@@ -12,13 +12,22 @@ import "out.proto";
 
 message ClientMessage {
   oneof message {
-    SubscribeMarket subscribe_market = 1;
-    UnSubscribeMarket unsubscribe_market = 2;
-    MakePayment make_payment = 3;
-    CreateMarket create_market = 4;
-    SettleMarket settle_market = 5;
-    CreateOrder create_order = 6;
-    CancelOrder cancel_order = 7;
-    Out out = 8;
+    SubscribePortfolio subscribe_portfolio = 1;
+    UnSubscribePortfolio unsubscribe_portfolio = 2;
+    SubscribeMarkets subscribe_markets = 3;
+    UnSubscribeMarkets unsubscribe_markets = 4;
+    SubscribeMarket subscribe_market = 5;
+    UnSubscribeMarket unsubscribe_market = 6;
+    MakePayment make_payment = 7;
+    CreateMarket create_market = 8;
+    SettleMarket settle_market = 9;
+    CreateOrder create_order = 10;
+    CancelOrder cancel_order = 11;
+    Out out = 12;
   }
 }
+
+message SubscribePortfolio {}
+message UnSubscribePortfolio {}
+message SubscribeMarkets {}
+message UnSubscribeMarkets {}

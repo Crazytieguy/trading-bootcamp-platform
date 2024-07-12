@@ -8,18 +8,27 @@ import "order.proto";
 import "order-cancelled.proto";
 import "order-filled.proto";
 import "trade.proto";
+import "payment.proto";
 import "request-failed.proto";
 
 message ServerMessage {
   oneof message {
     Portfolio portfolio_state = 1;
     Market market_state = 2;
-    Market market_created = 3;
-    MarketSettled market_settled = 4;
-    Order order_created = 5;
-    OrderCancelled order_cancelled = 6;
-    OrderFilled order_filled = 7;
-    Trade trade_executed = 8;
-    RequestFailed request_failed = 9;
+    MarketsSubscribed markets_subscribed = 3;
+    MarketSubscribed market_subscribed = 4;
+    MarketSettled market_settled = 5;
+    Order order_state = 6;
+    OrderCancelled order_cancelled = 7;
+    OrderFilled order_filled = 8;
+    Trade trade_state = 9;
+    Payment payment_state = 10;
+    RequestFailed request_failed = 11;
   }
+}
+
+message MarketsSubscribed {}
+
+message MarketSubscribed {
+  uint64 id = 1;
 }

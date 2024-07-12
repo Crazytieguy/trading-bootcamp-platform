@@ -55,3 +55,7 @@ CREATE TABLE IF NOT EXISTS "payment" (
 );
 CREATE INDEX "idx_payment_payer_id" ON "payment" ("payer_id");
 CREATE INDEX "idx_payment_recipient_id" ON "payment" ("recipient_id");
+CREATE TABLE IF NOT EXISTS "acquire_write_lock" (
+  "id" INTEGER PRIMARY KEY,
+  "lock" BOOLEAN NOT NULL
+);

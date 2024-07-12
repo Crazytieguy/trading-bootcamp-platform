@@ -20,13 +20,6 @@ message Market {
     Closed closed = 9;
   }
 
-  optional State state = 10;
-
-  message State {
-    repeated Trade trade_history = 1;
-    repeated Order open_orders = 2;
-  }
-
   message Open {}
   message Closed {
     string settle_price = 1;

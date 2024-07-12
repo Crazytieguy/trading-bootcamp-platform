@@ -1,0 +1,13 @@
+syntax = "proto3";
+package websocket_api;
+
+import "google/protobuf/timestamp.proto";
+
+message Payment {
+  uint64 id = 1;
+  string payer_id = 2;
+  string recipient_id = 3;
+  string amount = 4;
+  string note = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
