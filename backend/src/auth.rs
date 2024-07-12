@@ -22,6 +22,7 @@ struct AuthConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "key")]
 pub enum Role {
     #[serde(rename = "admin")]
     Admin,
