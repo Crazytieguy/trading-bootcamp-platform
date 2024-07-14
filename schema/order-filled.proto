@@ -5,15 +5,6 @@ package websocket_api;
 message OrderFilled {
   uint64 id = 1;
   uint64 market_id = 2;
-  oneof fill_kind {
-    Full full = 3;
-    PartialFillDetails partial = 4;
-  }
-
-  message Full {}
-
-  message PartialFillDetails {
-    string size_filled = 1;
-    string size_remaining = 2;
-  }
+  string size_filled = 3;
+  string size_remaining = 4;
 }

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS "user" (
   "id" text NOT NULL PRIMARY KEY,
   "balance" text NOT NULL
-);
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS "market" (
   "id" INTEGER PRIMARY KEY,
   "name" text NOT NULL UNIQUE,
@@ -43,6 +43,19 @@ CREATE TABLE IF NOT EXISTS "trade" (
 CREATE INDEX "idx_trade_market_id" ON "trade" ("market_id");
 CREATE INDEX "idx_trade_buyer_id" ON "trade" ("buyer_id");
 CREATE INDEX "idx_trade_seller_id" ON "trade" ("seller_id");
+CREATE TABLE IF NOT EXISTS "exposure_cache" (
+  "user_id" text NOT NULL,
+  "market_id" INTEGER NOT NULL,
+  "position" text NOT NULL,
+  "total_bid_size" text NOT NULL,
+  "total_offer_size" text NOT NULL,
+  "total_bid_value" text NOT NULL,
+  "total_offer_value" text NOT NULL,
+  PRIMARY KEY ("user_id", "market_id"),
+  FOREIGN KEY ("user_id") REFERENCES "user" ("id"),
+  FOREIGN KEY ("market_id") REFERENCES "market" ("id")
+) WITHOUT ROWID;
+CREATE INDEX "idx_exposure_cache_market_id" ON "exposure_cache" ("market_id");
 CREATE TABLE IF NOT EXISTS "payment" (
   "id" INTEGER PRIMARY KEY,
   "payer_id" text NOT NULL,

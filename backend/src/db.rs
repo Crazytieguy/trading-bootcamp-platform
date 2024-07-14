@@ -2,13 +2,12 @@ use std::{env, fmt::Display, str::FromStr};
 
 use futures::TryStreamExt;
 use futures_core::stream::BoxStream;
-use fxhash::FxHashMap;
-use itertools::{EitherOrBoth, Itertools};
 use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
     types::{time::OffsetDateTime, Text},
-    Connection, FromRow, Sqlite, SqliteConnection, SqlitePool,
+    Connection, FromRow, Sqlite, SqliteConnection, SqlitePool, Transaction,
 };
 use tokio::sync::broadcast::error::RecvError;
 
@@ -77,7 +76,7 @@ impl DB {
                         break;
                     }
                 };
-                let approx_wal_pages = remaining_pages + released_connections * 4;
+                let approx_wal_pages = remaining_pages + released_connections * 8;
                 if approx_wal_pages < CHECKPOINT_PAGE_LIMIT {
                     continue;
                 }
@@ -117,76 +116,8 @@ impl DB {
         Ok(())
     }
 
-    pub async fn get_portfolio(&self, user_id: &str) -> SqlxResult<Portfolio> {
-        let mut transaction = self.pool.begin().await?;
-        let total_balance = sqlx::query_scalar!(
-            r#"SELECT balance as "balance: Text<Decimal>" FROM user WHERE id = ?"#,
-            user_id
-        )
-        .fetch_one(transaction.as_mut())
-        .await?;
-
-        let orders = sqlx::query!(
-            r#"SELECT market_id, count(*) as count FROM "order" WHERE owner_id = ? GROUP BY market_id ORDER BY market_id"#,
-            user_id
-        )
-        .fetch_all(transaction.as_mut())
-        .await?;
-
-        let trades = sqlx::query!(
-            r#"SELECT market_id, buyer_id, seller_id, size as "size: Text<Decimal>" FROM trade JOIN market ON (market.id = market_id) WHERE (buyer_id = ? or seller_id = ?) AND market.settled_price IS NULL ORDER BY market_id"#,
-            user_id, user_id
-        )
-        .fetch_all(transaction.as_mut())
-        .await?;
-
-        let trades_chunked = &trades.into_iter().chunk_by(|trade| trade.market_id);
-        let trades_agged = trades_chunked.into_iter().map(|(market_id, trades)| {
-            (
-                market_id,
-                trades
-                    .map(|trade| {
-                        if trade.buyer_id == user_id {
-                            trade.size.0
-                        } else {
-                            debug_assert_eq!(trade.seller_id, user_id);
-                            -trade.size.0
-                        }
-                    })
-                    .sum::<Decimal>(),
-            )
-        });
-
-        let market_exposures = orders
-            .into_iter()
-            .merge_join_by(trades_agged, |order, (market_id, _)| {
-                order.market_id.cmp(market_id)
-            })
-            .map(|either_or_both| match either_or_both {
-                EitherOrBoth::Both(order, (market_id, position)) => MarketExposure {
-                    market_id,
-                    position,
-                    orders: order.count as u32,
-                },
-                EitherOrBoth::Left(order) => MarketExposure {
-                    market_id: order.market_id,
-                    position: Decimal::ZERO,
-                    orders: order.count as u32,
-                },
-                EitherOrBoth::Right((market_id, position)) => MarketExposure {
-                    market_id,
-                    position,
-                    orders: 0,
-                },
-            })
-            .collect();
-
-        Ok(Portfolio {
-            total_balance: total_balance.0,
-            // TODO: actually calculate this
-            available_balance: total_balance.0,
-            market_exposures,
-        })
+    pub async fn get_portfolio<'a>(&'a self, user_id: &'a str) -> SqlxResult<Portfolio> {
+        get_portfolio(&mut self.pool.begin().await?, user_id).await
     }
 
     pub fn get_markets(&self) -> BoxStream<SqlxResult<Market>> {
@@ -218,22 +149,17 @@ impl DB {
         recipient_id: &str,
         amount: Decimal,
         note: &str,
-    ) -> SqlxResult<PaymentStatus> {
+    ) -> SqlxResult<MakePaymentStatus> {
+        if amount.is_sign_negative() {
+            return Ok(MakePaymentStatus::InvalidAmount);
+        }
+
         let mut transaction = self.begin_immediate().await?;
 
-        let Text(payer_balance) = sqlx::query_scalar!(
-            r#"SELECT balance as "balance: Text<Decimal>" FROM user WHERE id = ?"#,
-            payer_id
-        )
-        .fetch_one(transaction.as_mut())
-        .await?;
+        let payer_portfolio = get_portfolio(&mut transaction, payer_id).await?;
 
-        // TODO: replace this with available balance check
-        if payer_balance < amount {
-            sqlx::query!("ROLLBACK")
-                .execute(transaction.as_mut())
-                .await?;
-            return Ok(PaymentStatus::InsufficientFunds);
+        if payer_portfolio.available_balance < amount {
+            return Ok(MakePaymentStatus::InsufficientFunds);
         }
 
         let Text(recipient_balance) = sqlx::query_scalar!(
@@ -243,7 +169,7 @@ impl DB {
         .fetch_one(transaction.as_mut())
         .await?;
 
-        let payer_new_balance = Text(payer_balance - amount);
+        let payer_new_balance = Text(payer_portfolio.total_balance - amount);
         let recipient_new_balance = Text(recipient_balance + amount);
 
         sqlx::query!(
@@ -276,7 +202,7 @@ impl DB {
         .await?;
 
         transaction.commit().await?;
-        Ok(PaymentStatus::Success(payment))
+        Ok(MakePaymentStatus::Success(payment))
     }
 
     pub async fn create_market(
@@ -286,7 +212,10 @@ impl DB {
         owner_id: &str,
         min_settlement: Decimal,
         max_settlement: Decimal,
-    ) -> SqlxResult<Market> {
+    ) -> SqlxResult<CreateMarketStatus> {
+        if min_settlement >= max_settlement || min_settlement.is_sign_negative() {
+            return Ok(CreateMarketStatus::InvalidSettlements);
+        }
         let min_settlement = Text(min_settlement);
         let max_settlement = Text(max_settlement);
         let market = sqlx::query_as!(
@@ -300,7 +229,7 @@ impl DB {
         )
         .fetch_one(&self.pool)
         .await?;
-        Ok(market)
+        Ok(CreateMarketStatus::Success(market))
     }
 
     pub async fn settle_market(
@@ -347,33 +276,25 @@ impl DB {
             .execute(transaction.as_mut())
             .await?;
 
-        let mut trades = sqlx::query!(
-            r#"SELECT buyer_id, seller_id, size as "size: Text<Decimal>" FROM trade WHERE market_id = ?"#,
+        let user_positions = sqlx::query!(
+            r#"DELETE FROM exposure_cache WHERE market_id = ? RETURNING user_id, position as "position: Text<Decimal>""#,
             id
         )
-        .fetch(transaction.as_mut());
+        .fetch_all(transaction.as_mut()).await?;
 
-        let mut positions = FxHashMap::<String, Decimal>::default();
-        while let Some(trade) = trades.try_next().await? {
-            *positions.entry(trade.buyer_id).or_default() += trade.size.0;
-            *positions.entry(trade.seller_id).or_default() -= trade.size.0;
-        }
-
-        drop(trades);
-
-        for (user_id, position) in positions {
+        for user_position in user_positions {
             let Text(current_balance) = sqlx::query_scalar!(
                 r#"SELECT balance as "balance: Text<Decimal>" FROM user WHERE id = ?"#,
-                user_id
+                user_position.user_id
             )
             .fetch_one(transaction.as_mut())
             .await?;
 
-            let new_balance = Text(current_balance + position * settled_price.0);
+            let new_balance = Text(current_balance + user_position.position.0 * settled_price.0);
             sqlx::query!(
                 r#"UPDATE user SET balance = ? WHERE id = ?"#,
                 new_balance,
-                user_id
+                user_position.user_id
             )
             .execute(transaction.as_mut())
             .await?;
@@ -385,25 +306,211 @@ impl DB {
 
     pub async fn create_order(
         &self,
-        _market_id: i64,
-        _owner_id: &str,
-        _price: Decimal,
-        _size: Decimal,
-        _side: Side,
-    ) -> SqlxResult<()> {
-        todo!()
+        market_id: i64,
+        owner_id: &str,
+        price: Decimal,
+        size: Decimal,
+        side: Side,
+    ) -> SqlxResult<CreateOrderStatus> {
+        let mut transaction = self.begin_immediate().await?;
+        let market = sqlx::query!(
+            r#"SELECT min_settlement as "min_settlement: Text<Decimal>", max_settlement as "max_settlement: Text<Decimal>", settled_price IS NOT NULL as "settled: bool" FROM market WHERE id = ?"#,
+            market_id
+        )
+        .fetch_one(transaction.as_mut())
+        .await?;
+        if market.settled {
+            return Ok(CreateOrderStatus::MarketSettled);
+        }
+        if price < market.min_settlement.0 || price > market.max_settlement.0 {
+            return Ok(CreateOrderStatus::InvalidPrice);
+        }
+
+        let side = Text(side);
+
+        // Overfetch to avoid floating point issues
+        let condition_price = match side.0 {
+            Side::Bid => Text(price + dec!(0.000001)),
+            Side::Offer => Text(price - dec!(0.000001)),
+        };
+
+        // check for potential fills
+        let mut potential_fills = match side.0 {
+            Side::Bid => {
+                sqlx::query_as!(
+                    Order,
+                    r#"SELECT id as "id!", market_id, owner_id, created_at, size as "size: _", price as "price: _", side as "side: Text<Side>" FROM "order" WHERE market_id = ? AND side != ? AND CAST(price AS REAL) <= ? ORDER BY CAST(price AS REAL), created_at"#,
+                    market_id,
+                    side,
+                    condition_price
+                ).fetch(transaction.as_mut())
+            }
+            Side::Offer => {
+                sqlx::query_as!(
+                    Order,
+                    r#"SELECT id as "id!", market_id, owner_id, created_at, size as "size: _", price as "price: _", side as "side: Text<Side>" FROM "order" WHERE market_id = ? AND side != ? AND CAST(price AS REAL) >= ? ORDER BY CAST(price AS REAL) DESC, created_at"#,
+                    market_id,
+                    side,
+                    condition_price
+                ).fetch(transaction.as_mut())
+            }
+        };
+
+        let mut size_remaining = size;
+        let mut order_fills = Vec::new();
+
+        while let Some(other) = potential_fills.try_next().await? {
+            if matches!(side.0, Side::Bid) && other.price.0 > price
+                || matches!(side.0, Side::Offer) && other.price.0 < price
+            {
+                continue;
+            }
+            let size_filled = size_remaining.min(other.size.0);
+            size_remaining -= size_filled;
+            order_fills.push(OrderFill {
+                id: other.id,
+                market_id: other.market_id,
+                owner_id: other.owner_id,
+                size_filled,
+                size_remaining: other.size.0 - size_filled,
+                price: other.price.0,
+                side: other.side.0,
+            });
+            if size_remaining.is_zero() {
+                break;
+            }
+        }
+        drop(potential_fills);
+
+        let order = if size_remaining > Decimal::ZERO {
+            let size_remaining = Text(size_remaining);
+            let price = Text(price);
+            Some(
+                sqlx::query_as!(
+                    Order,
+                    r#"INSERT INTO "order" (market_id, owner_id, size, price, side) VALUES (?, ?, ?, ?, ?) RETURNING id, market_id, owner_id, created_at, size as "size: _", price as "price: _", side as "side: _""#,
+                    market_id,
+                    owner_id,
+                    size_remaining,
+                    price,
+                    side
+                )
+                .fetch_one(transaction.as_mut())
+                .await?
+            )
+        } else {
+            None
+        };
+        update_exposure_cache(
+            &mut transaction,
+            true,
+            &OrderFill {
+                id: 0,
+                owner_id: owner_id.to_string(),
+                market_id,
+                size_remaining,
+                size_filled: size - size_remaining,
+                price,
+                side: side.0,
+            },
+        )
+        .await?;
+        let mut trades = Vec::new();
+        for fill in &order_fills {
+            let size = Text(fill.size_filled);
+            let price = Text(fill.price);
+            let (buyer_id, seller_id) = match side.0 {
+                Side::Bid => (owner_id, fill.owner_id.as_str()),
+                Side::Offer => (fill.owner_id.as_str(), owner_id),
+            };
+            let trade = sqlx::query_as!(
+                Trade,
+                r#"INSERT INTO trade (market_id, buyer_id, seller_id, size, price) VALUES (?, ?, ?, ?, ?) RETURNING id, market_id, buyer_id, seller_id, size as "size: _", price as "price: _", created_at"#,
+                market_id,
+                buyer_id,
+                seller_id,
+                size,
+                price
+            )
+            .fetch_one(transaction.as_mut())
+            .await?;
+            trades.push(trade);
+            if fill.size_remaining.is_zero() {
+                sqlx::query!(r#"DELETE FROM "order" WHERE id = ?"#, fill.id)
+                    .execute(transaction.as_mut())
+                    .await?;
+            } else {
+                let size = Text(fill.size_remaining);
+                sqlx::query!(r#"UPDATE "order" SET size = ? WHERE id = ?"#, size, fill.id)
+                    .execute(transaction.as_mut())
+                    .await?;
+            }
+            update_exposure_cache(&mut transaction, false, &fill).await?;
+        }
+
+        let portfolio = get_portfolio(&mut transaction, owner_id).await?;
+        if portfolio.available_balance.is_sign_negative() {
+            return Ok(CreateOrderStatus::InsufficientFunds);
+        }
+
+        transaction.commit().await?;
+
+        Ok(CreateOrderStatus::Success {
+            order,
+            fills: order_fills,
+            trades,
+        })
     }
 
     pub async fn cancel_order(&self, id: i64, owner_id: &str) -> SqlxResult<CancelOrderStatus> {
         let mut transaction = self.pool.begin().await?;
 
-        let real_owner_id =
-            sqlx::query_scalar!(r#"DELETE FROM "order" WHERE id = ? RETURNING owner_id"#, id)
+        let order =
+            sqlx::query_as!(Order, r#"DELETE FROM "order" WHERE id = ? RETURNING id, market_id, owner_id, created_at, size as "size: _", price as "price: _", side as "side: _""#, id)
                 .fetch_one(transaction.as_mut())
                 .await?;
 
-        if real_owner_id != owner_id {
+        if order.owner_id != owner_id {
             return Ok(CancelOrderStatus::NotOwner);
+        }
+
+        let current_exposure = sqlx::query!(
+            r#"SELECT total_bid_size as "total_bid_size: Text<Decimal>", total_offer_size as "total_offer_size: Text<Decimal>", total_bid_value as "total_bid_value: Text<Decimal>", total_offer_value as "total_offer_value: Text<Decimal>" FROM exposure_cache WHERE user_id = ? AND market_id = ?"#,
+            owner_id,
+            order.market_id,
+        )
+        .fetch_one(transaction.as_mut())
+        .await?;
+
+        match order.side.0 {
+            Side::Bid => {
+                let total_bid_size = Text(current_exposure.total_bid_size.0 - order.size.0);
+                let total_bid_value =
+                    Text(current_exposure.total_bid_value.0 - order.size.0 * order.price.0);
+                sqlx::query!(
+                    r#"UPDATE exposure_cache SET total_bid_size = ?, total_bid_value = ? WHERE user_id = ? AND market_id = ?"#,
+                    total_bid_size,
+                    total_bid_value,
+                    owner_id,
+                    order.market_id,
+                )
+                .execute(transaction.as_mut())
+                .await?;
+            }
+            Side::Offer => {
+                let total_offer_size = Text(current_exposure.total_offer_size.0 - order.size.0);
+                let total_offer_value =
+                    Text(current_exposure.total_offer_value.0 - order.size.0 * order.price.0);
+                sqlx::query!(
+                    r#"UPDATE exposure_cache SET total_offer_size = ?, total_offer_value = ? WHERE user_id = ? AND market_id = ?"#,
+                    total_offer_size,
+                    total_offer_value,
+                    owner_id,
+                    order.market_id,
+                )
+                .execute(transaction.as_mut())
+                .await?;
+            }
         }
 
         transaction.commit().await?;
@@ -423,6 +530,135 @@ impl DB {
     }
 }
 
+async fn get_portfolio(
+    transaction: &mut Transaction<'_, Sqlite>,
+    user_id: &str,
+) -> SqlxResult<Portfolio> {
+    let total_balance = sqlx::query_scalar!(
+        r#"SELECT balance as "balance: Text<Decimal>" FROM user WHERE id = ?"#,
+        user_id
+    )
+    .fetch_one(transaction.as_mut())
+    .await?;
+
+    let market_exposures = sqlx::query_as!(
+        MarketExposure,
+        r#"SELECT market_id, position as "position: _", total_bid_size as "total_bid_size: _", total_offer_size as "total_offer_size: _", total_bid_value as "total_bid_value: _", total_offer_value as "total_offer_value: _", min_settlement as "min_settlement: _", max_settlement as "max_settlement: _" FROM exposure_cache JOIN market on (market_id = market.id) WHERE user_id = ?"#,
+        user_id
+    )
+    .fetch_all(transaction.as_mut())
+    .await?;
+
+    let available_balance = total_balance.0
+        + market_exposures
+            .iter()
+            .map(MarketExposure::worst_case_outcome)
+            .sum::<Decimal>();
+
+    Ok(Portfolio {
+        total_balance: total_balance.0,
+        available_balance,
+        market_exposures,
+    })
+}
+
+async fn update_exposure_cache<'a>(
+    transaction: &mut Transaction<'a, Sqlite>,
+    is_new: bool,
+    OrderFill {
+        id: _,
+        owner_id,
+        market_id,
+        size_filled,
+        size_remaining,
+        price,
+        side,
+    }: &OrderFill,
+) -> SqlxResult<()> {
+    let current_market_exposure = sqlx::query!(
+        r#"INSERT INTO exposure_cache (user_id, market_id, position, total_bid_size, total_offer_size, total_bid_value, total_offer_value) VALUES (?, ?, '0', '0', '0', '0', '0') ON CONFLICT DO NOTHING RETURNING position as "position: Text<Decimal>", total_bid_size as "total_bid_size: Text<Decimal>", total_offer_size as "total_offer_size: Text<Decimal>", total_bid_value as "total_bid_value: Text<Decimal>", total_offer_value as "total_offer_value: Text<Decimal>""#,
+        owner_id,
+        market_id,
+    )
+    .fetch_one(transaction.as_mut())
+    .await?;
+    let size_change = if is_new {
+        *size_remaining
+    } else {
+        -size_filled
+    };
+    Ok(match side {
+        Side::Bid => {
+            let total_bid_size = Text(current_market_exposure.total_bid_size.0 + size_change);
+            let total_bid_value =
+                Text(current_market_exposure.total_bid_value.0 + size_change * price);
+            let position = Text(current_market_exposure.position.0 + size_filled);
+            sqlx::query!(
+                r#"UPDATE exposure_cache SET total_bid_size = ?, total_bid_value = ?, position = ? WHERE user_id = ? AND market_id = ?"#,
+                total_bid_size,
+                total_bid_value,
+                position,
+                owner_id,
+                market_id,
+            )
+            .execute(transaction.as_mut())
+            .await?;
+        }
+        Side::Offer => {
+            let total_offer_size = Text(current_market_exposure.total_offer_size.0 + size_change);
+            let total_offer_value =
+                Text(current_market_exposure.total_offer_value.0 + size_change * price);
+            let position = Text(current_market_exposure.position.0 - size_filled);
+            sqlx::query!(
+                r#"UPDATE exposure_cache SET total_offer_size = ?, total_offer_value = ?, position = ? WHERE user_id = ? AND market_id = ?"#,
+                total_offer_size,
+                total_offer_value,
+                position,
+                owner_id,
+                market_id,
+            )
+            .execute(transaction.as_mut())
+            .await?;
+        }
+    })
+}
+
+impl MarketExposure {
+    pub fn worst_case_outcome(&self) -> Decimal {
+        let resolves_min_case = self.min_settlement.0 * (self.position.0 + self.total_bid_size.0)
+            - self.total_bid_value.0;
+        let resolves_max_case = self.max_settlement.0 * (self.position.0 - self.total_offer_size.0)
+            + self.total_offer_value.0;
+        resolves_min_case.min(resolves_max_case)
+    }
+}
+
+pub enum CreateOrderStatus {
+    MarketSettled,
+    InvalidPrice,
+    InsufficientFunds,
+    Success {
+        order: Option<Order>,
+        fills: Vec<OrderFill>,
+        trades: Vec<Trade>,
+    },
+}
+
+pub struct OrderFill {
+    id: i64,
+    market_id: i64,
+    owner_id: String,
+    size_filled: Decimal,
+    size_remaining: Decimal,
+    price: Decimal,
+    side: Side,
+}
+
+pub enum CreateMarketStatus {
+    Success(Market),
+    InvalidSettlements,
+}
+
 pub enum CancelOrderStatus {
     Success,
     NotOwner,
@@ -435,9 +671,10 @@ pub enum SettleMarketStatus {
     InvalidSettlementPrice,
 }
 
-pub enum PaymentStatus {
+pub enum MakePaymentStatus {
     Success(Payment),
     InsufficientFunds,
+    InvalidAmount,
 }
 
 pub struct Payment {
@@ -457,8 +694,13 @@ pub struct Portfolio {
 
 pub struct MarketExposure {
     pub market_id: i64,
-    pub position: Decimal,
-    pub orders: u32,
+    pub position: Text<Decimal>,
+    pub total_bid_size: Text<Decimal>,
+    pub total_offer_size: Text<Decimal>,
+    pub total_bid_value: Text<Decimal>,
+    pub total_offer_value: Text<Decimal>,
+    pub min_settlement: Text<Decimal>,
+    pub max_settlement: Text<Decimal>,
 }
 
 #[derive(FromRow)]
@@ -483,6 +725,7 @@ pub struct Order {
     pub side: Text<Side>,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Side {
     Bid,
     Offer,

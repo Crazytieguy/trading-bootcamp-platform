@@ -25,6 +25,7 @@ futures-core = "0.3.30"
 itertools = "0.13.0"
 fxhash = "0.2.1"
 futures = "0.3.30"
+rust_decimal_macros = "1.35.0"
 
 [build-dependencies]
 prost-build = "0.12.6"
