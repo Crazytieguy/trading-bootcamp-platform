@@ -10,11 +10,12 @@ use sqlx::{
     Connection, FromRow, Sqlite, SqliteConnection, SqlitePool, Transaction,
 };
 use tokio::sync::broadcast::error::RecvError;
+use tracing::instrument;
 
 // should hopefully keep the WAL size nice and small and avoid blocking writers
 const CHECKPOINT_PAGE_LIMIT: i64 = 512;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DB {
     pool: SqlitePool,
 }
@@ -22,6 +23,7 @@ pub struct DB {
 type SqlxResult<T> = Result<T, sqlx::Error>;
 
 impl DB {
+    #[instrument]
     pub async fn init() -> anyhow::Result<Self> {
         let connection_options = SqliteConnectOptions::from_str(&env::var("DATABASE_URL")?)?
             .create_if_missing(true)
@@ -104,6 +106,7 @@ impl DB {
         Ok(Self { pool })
     }
 
+    #[instrument]
     pub async fn ensure_user_created(&self, id: &str, initial_balance: Decimal) -> SqlxResult<()> {
         let balance = Text(initial_balance);
         sqlx::query!(
@@ -116,15 +119,18 @@ impl DB {
         Ok(())
     }
 
+    #[instrument]
     pub async fn get_portfolio<'a>(&'a self, user_id: &'a str) -> SqlxResult<Portfolio> {
         get_portfolio(&mut self.pool.begin().await?, user_id).await
     }
 
+    #[instrument]
     pub fn get_markets(&self) -> BoxStream<SqlxResult<Market>> {
         sqlx::query_as!(Market, r#"SELECT id, name, description, owner_id, created_at, min_settlement as "min_settlement: _", max_settlement as "max_settlement: _", settled_price as "settled_price: _" FROM market"#)
             .fetch(&self.pool)
     }
 
+    #[instrument]
     pub fn get_market_orders(&self, market_id: i64) -> BoxStream<SqlxResult<Order>> {
         // Can't use the macro due to https://github.com/launchbadge/sqlx/issues/1151
         // sqlx::query_as!(Order, r#"SELECT id as "id!", market_id, owner_id, created_at, size as "size: _", price as "price: _", side as "side: _" FROM "order" WHERE market_id = ?"#, market_id)
@@ -134,6 +140,7 @@ impl DB {
         .fetch(&self.pool)
     }
 
+    #[instrument]
     pub fn get_market_trades(&self, market_id: i64) -> BoxStream<SqlxResult<Trade>> {
         // Can't use the macro due to https://github.com/launchbadge/sqlx/issues/1151
         // sqlx::query_as!(Trade, r#"SELECT id as "id!", market_id, buyer_id, seller_id, size as "size: _", price as "price: _", created_at FROM trade WHERE market_id = ?"#, market_id)
@@ -143,6 +150,7 @@ impl DB {
         .fetch(&self.pool)
     }
 
+    #[instrument]
     pub async fn make_payment(
         &self,
         payer_id: &str,
@@ -205,6 +213,7 @@ impl DB {
         Ok(MakePaymentStatus::Success(payment))
     }
 
+    #[instrument]
     pub async fn create_market(
         &self,
         name: &str,
@@ -232,6 +241,7 @@ impl DB {
         Ok(CreateMarketStatus::Success(market))
     }
 
+    #[instrument]
     pub async fn settle_market(
         &self,
         id: i64,
@@ -304,6 +314,7 @@ impl DB {
         Ok(SettleMarketStatus::Success(market))
     }
 
+    #[instrument]
     pub async fn create_order(
         &self,
         market_id: i64,
@@ -415,6 +426,7 @@ impl DB {
             },
         )
         .await?;
+        let mut balance_change = Decimal::ZERO;
         let mut trades = Vec::new();
         for fill in &order_fills {
             let size = Text(fill.size_filled);
@@ -434,7 +446,6 @@ impl DB {
             )
             .fetch_one(transaction.as_mut())
             .await?;
-            trades.push(trade);
             if fill.size_remaining.is_zero() {
                 sqlx::query!(r#"DELETE FROM "order" WHERE id = ?"#, fill.id)
                     .execute(transaction.as_mut())
@@ -446,7 +457,42 @@ impl DB {
                     .await?;
             }
             update_exposure_cache(&mut transaction, false, &fill).await?;
+            let trade_balance_change = match side.0 {
+                Side::Bid => -trade.size.0 * trade.price.0,
+                Side::Offer => trade.size.0 * trade.price.0,
+            };
+            balance_change += trade_balance_change;
+            let other_balance_change = -trade_balance_change;
+            let Text(other_current_balance) = sqlx::query_scalar!(
+                r#"SELECT balance as "balance: Text<Decimal>" FROM user WHERE id = ?"#,
+                fill.owner_id
+            )
+            .fetch_one(transaction.as_mut())
+            .await?;
+            let other_new_balance = Text(other_current_balance + other_balance_change);
+            sqlx::query!(
+                r#"UPDATE user SET balance = ? WHERE id = ?"#,
+                other_new_balance,
+                fill.owner_id
+            )
+            .execute(transaction.as_mut())
+            .await?;
+            trades.push(trade);
         }
+        let Text(current_balance) = sqlx::query_scalar!(
+            r#"SELECT balance as "balance: Text<Decimal>" FROM user WHERE id = ?"#,
+            owner_id
+        )
+        .fetch_one(transaction.as_mut())
+        .await?;
+        let new_balance = Text(current_balance + balance_change);
+        sqlx::query!(
+            r#"UPDATE user SET balance = ? WHERE id = ?"#,
+            new_balance,
+            owner_id
+        )
+        .execute(transaction.as_mut())
+        .await?;
 
         let portfolio = get_portfolio(&mut transaction, owner_id).await?;
         if portfolio.available_balance.is_sign_negative() {
@@ -462,6 +508,7 @@ impl DB {
         })
     }
 
+    #[instrument]
     pub async fn cancel_order(&self, id: i64, owner_id: &str) -> SqlxResult<CancelOrderStatus> {
         let mut transaction = self.pool.begin().await?;
 
