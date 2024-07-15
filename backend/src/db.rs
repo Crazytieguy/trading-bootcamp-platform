@@ -120,7 +120,7 @@ impl DB {
     }
 
     #[instrument]
-    pub async fn get_portfolio<'a>(&'a self, user_id: &'a str) -> SqlxResult<Portfolio> {
+    pub async fn get_portfolio(&self, user_id: &str) -> SqlxResult<Portfolio> {
         get_portfolio(&mut self.pool.begin().await?, user_id).await
     }
 
@@ -494,6 +494,8 @@ impl DB {
         .execute(transaction.as_mut())
         .await?;
 
+        // TODO: we can actually check this at the start of the function,
+        // avoiding all the work in the invalid case
         let portfolio = get_portfolio(&mut transaction, owner_id).await?;
         if portfolio.available_balance.is_sign_negative() {
             return Ok(CreateOrderStatus::InsufficientFunds);
@@ -622,13 +624,35 @@ async fn update_exposure_cache<'a>(
         side,
     }: &OrderFill,
 ) -> SqlxResult<()> {
-    let current_market_exposure = sqlx::query!(
-        r#"INSERT INTO exposure_cache (user_id, market_id, position, total_bid_size, total_offer_size, total_bid_value, total_offer_value) VALUES (?, ?, '0', '0', '0', '0', '0') ON CONFLICT DO NOTHING RETURNING position as "position: Text<Decimal>", total_bid_size as "total_bid_size: Text<Decimal>", total_offer_size as "total_offer_size: Text<Decimal>", total_bid_value as "total_bid_value: Text<Decimal>", total_offer_value as "total_offer_value: Text<Decimal>""#,
+    struct Exposure {
+        position: Text<Decimal>,
+        total_bid_size: Text<Decimal>,
+        total_offer_size: Text<Decimal>,
+        total_bid_value: Text<Decimal>,
+        total_offer_value: Text<Decimal>,
+    }
+
+    let existing_market_exposure = sqlx::query_as!(Exposure,
+        r#"SELECT position as "position: Text<Decimal>", total_bid_size as "total_bid_size: Text<Decimal>", total_offer_size as "total_offer_size: Text<Decimal>", total_bid_value as "total_bid_value: Text<Decimal>", total_offer_value as "total_offer_value: Text<Decimal>" FROM exposure_cache WHERE user_id = ? AND market_id = ?"#,
         owner_id,
         market_id,
     )
-    .fetch_one(transaction.as_mut())
+    .fetch_optional(transaction.as_mut())
     .await?;
+
+    let current_market_exposure = if let Some(exposure) = existing_market_exposure {
+        exposure
+    } else {
+        sqlx::query_as!(
+            Exposure,
+            r#"INSERT INTO exposure_cache (user_id, market_id, position, total_bid_size, total_offer_size, total_bid_value, total_offer_value) VALUES (?, ?, '0', '0', '0', '0', '0') RETURNING position as "position: Text<Decimal>", total_bid_size as "total_bid_size: Text<Decimal>", total_offer_size as "total_offer_size: Text<Decimal>", total_bid_value as "total_bid_value: Text<Decimal>", total_offer_value as "total_offer_value: Text<Decimal>""#,
+            owner_id,
+            market_id,
+        )
+        .fetch_one(transaction.as_mut())
+        .await?
+    };
+
     let size_change = if is_new {
         *size_remaining
     } else {
@@ -680,6 +704,7 @@ impl MarketExposure {
     }
 }
 
+#[derive(Debug)]
 pub enum CreateOrderStatus {
     MarketSettled,
     InvalidPrice,
@@ -691,6 +716,7 @@ pub enum CreateOrderStatus {
     },
 }
 
+#[derive(Debug)]
 pub struct OrderFill {
     id: i64,
     market_id: i64,
@@ -701,16 +727,19 @@ pub struct OrderFill {
     side: Side,
 }
 
+#[derive(Debug)]
 pub enum CreateMarketStatus {
     Success(Market),
     InvalidSettlements,
 }
 
+#[derive(Debug)]
 pub enum CancelOrderStatus {
     Success,
     NotOwner,
 }
 
+#[derive(Debug)]
 pub enum SettleMarketStatus {
     Success(Market),
     AlreadySettled,
@@ -718,12 +747,14 @@ pub enum SettleMarketStatus {
     InvalidSettlementPrice,
 }
 
+#[derive(Debug)]
 pub enum MakePaymentStatus {
     Success(Payment),
     InsufficientFunds,
     InvalidAmount,
 }
 
+#[derive(Debug)]
 pub struct Payment {
     pub id: i64,
     pub payer_id: String,
@@ -733,12 +764,14 @@ pub struct Payment {
     pub created_at: OffsetDateTime,
 }
 
+#[derive(Debug)]
 pub struct Portfolio {
     pub total_balance: Decimal,
     pub available_balance: Decimal,
     pub market_exposures: Vec<MarketExposure>,
 }
 
+#[derive(Debug, PartialEq, Eq, Default)]
 pub struct MarketExposure {
     pub market_id: i64,
     pub position: Text<Decimal>,
@@ -750,7 +783,7 @@ pub struct MarketExposure {
     pub max_settlement: Text<Decimal>,
 }
 
-#[derive(FromRow)]
+#[derive(FromRow, Debug)]
 pub struct Trade {
     pub id: i64,
     pub market_id: i64,
@@ -761,7 +794,7 @@ pub struct Trade {
     pub created_at: OffsetDateTime,
 }
 
-#[derive(FromRow)]
+#[derive(FromRow, Debug)]
 pub struct Order {
     pub id: i64,
     pub market_id: i64,
@@ -799,6 +832,7 @@ impl Display for Side {
     }
 }
 
+#[derive(Debug)]
 pub struct Market {
     pub id: i64,
     pub name: String,
@@ -810,9 +844,373 @@ pub struct Market {
     pub settled_price: Option<Text<Decimal>>,
 }
 
-#[derive(FromRow)]
+#[derive(FromRow, Debug)]
 struct WalCheckPointRow {
     busy: i64,
     log: i64,
     checkpointed: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{assert_matches::assert_matches, collections::HashSet};
+
+    use itertools::Itertools;
+
+    use super::*;
+
+    #[sqlx::test(fixtures("users"))]
+    async fn test_make_payment(pool: SqlitePool) -> SqlxResult<()> {
+        let db = DB { pool };
+        let payment_status = db
+            .make_payment("a", "b", dec!(1000), "test payment")
+            .await?;
+        assert_matches!(payment_status, MakePaymentStatus::InsufficientFunds);
+        let payment_status = db.make_payment("a", "b", dec!(-10), "test payment").await?;
+        assert_matches!(payment_status, MakePaymentStatus::InvalidAmount);
+        let payment_status = db.make_payment("a", "b", dec!(10), "test payment").await?;
+        assert_matches!(payment_status, MakePaymentStatus::Success(_));
+
+        let a_portfolio = db.get_portfolio("a").await?;
+        assert_eq!(a_portfolio.total_balance, dec!(90));
+        assert_eq!(a_portfolio.available_balance, dec!(90));
+
+        let b_portfolio = db.get_portfolio("b").await?;
+        assert_eq!(b_portfolio.total_balance, dec!(110));
+        assert_eq!(b_portfolio.available_balance, dec!(110));
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("users", "markets"))]
+    async fn test_invalid_orders_rejected(pool: SqlitePool) -> SqlxResult<()> {
+        let db = DB { pool };
+
+        let order_status = db
+            .create_order(1, "a", dec!(30), dec!(1), Side::Bid)
+            .await?;
+        assert_matches!(order_status, CreateOrderStatus::InvalidPrice);
+
+        let order_status = db
+            .create_order(1, "a", dec!(15), dec!(100), Side::Bid)
+            .await?;
+        assert_matches!(order_status, CreateOrderStatus::InsufficientFunds);
+
+        let order_status = db
+            .create_order(1, "a", dec!(15), dec!(100), Side::Offer)
+            .await?;
+        assert_matches!(order_status, CreateOrderStatus::InsufficientFunds);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("users", "markets"))]
+    async fn test_create_and_cancel_single_bid(pool: SqlitePool) -> SqlxResult<()> {
+        let db = DB { pool };
+
+        let order_status = db
+            .create_order(1, "a", dec!(15), dec!(1), Side::Bid)
+            .await?;
+        let order = match order_status {
+            CreateOrderStatus::Success {
+                order: Some(order), ..
+            } => order,
+            _ => panic!("expected success order"),
+        };
+
+        let a_portfolio = db.get_portfolio("a").await?;
+        assert_eq!(a_portfolio.total_balance, dec!(100));
+        assert_eq!(a_portfolio.available_balance, dec!(95));
+        assert_eq!(
+            &a_portfolio.market_exposures,
+            &[MarketExposure {
+                market_id: 1,
+                total_bid_size: Text(dec!(1)),
+                total_bid_value: Text(dec!(15)),
+                min_settlement: Text(dec!(10)),
+                max_settlement: Text(dec!(20)),
+                ..Default::default()
+            }]
+        );
+
+        db.cancel_order(order.id, "a").await?;
+        let all_orders: Vec<Order> = db.get_market_orders(1).try_collect().await.unwrap();
+        assert_eq!(all_orders.len(), 0);
+
+        let a_portfolio = db.get_portfolio("a").await?;
+        assert_eq!(a_portfolio.total_balance, dec!(100));
+        assert_eq!(a_portfolio.available_balance, dec!(100));
+        assert_eq!(
+            &a_portfolio.market_exposures,
+            &[MarketExposure {
+                market_id: 1,
+                min_settlement: Text(dec!(10)),
+                max_settlement: Text(dec!(20)),
+                ..Default::default()
+            }]
+        );
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("users", "markets"))]
+    async fn test_create_single_offer(pool: SqlitePool) -> SqlxResult<()> {
+        let db = DB { pool };
+
+        let order_status = db
+            .create_order(1, "a", dec!(15), dec!(1), Side::Offer)
+            .await?;
+        assert_matches!(
+            order_status,
+            CreateOrderStatus::Success { order: Some(_), .. }
+        );
+
+        let a_portfolio = db.get_portfolio("a").await?;
+        assert_eq!(a_portfolio.total_balance, dec!(100));
+        assert_eq!(a_portfolio.available_balance, dec!(95));
+        assert_eq!(
+            &a_portfolio.market_exposures,
+            &[MarketExposure {
+                market_id: 1,
+                total_offer_size: Text(dec!(1)),
+                total_offer_value: Text(dec!(15)),
+                min_settlement: Text(dec!(10)),
+                max_settlement: Text(dec!(20)),
+                ..Default::default()
+            }]
+        );
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("users", "markets"))]
+    async fn test_create_three_orders_one_fill(pool: SqlitePool) -> SqlxResult<()> {
+        let db = DB { pool };
+
+        let _ = db
+            .create_order(1, "a", dec!(12), dec!(1), Side::Bid)
+            .await?;
+        let _ = db
+            .create_order(1, "a", dec!(16), dec!(1), Side::Offer)
+            .await?;
+
+        let a_portfolio = db.get_portfolio("a").await?;
+        assert_eq!(a_portfolio.total_balance, dec!(100));
+        assert_eq!(a_portfolio.available_balance, dec!(96));
+        assert_eq!(
+            &a_portfolio.market_exposures,
+            &[MarketExposure {
+                market_id: 1,
+                total_bid_size: Text(dec!(1)),
+                total_bid_value: Text(dec!(12)),
+                total_offer_size: Text(dec!(1)),
+                total_offer_value: Text(dec!(16)),
+                min_settlement: Text(dec!(10)),
+                max_settlement: Text(dec!(20)),
+                ..Default::default()
+            }]
+        );
+
+        let order_status = db
+            .create_order(1, "b", dec!(11), dec!(0.5), Side::Offer)
+            .await?;
+        let CreateOrderStatus::Success {
+            trades,
+            fills,
+            order: None,
+        } = order_status
+        else {
+            panic!("expected success with no order");
+        };
+        assert_eq!(trades.len(), 1);
+        assert_eq!(fills.len(), 1);
+        let trade = &trades[0];
+        let fill = &fills[0];
+        assert_eq!(trade.buyer_id, "a");
+        assert_eq!(trade.seller_id, "b");
+        assert_eq!(trade.size.0, dec!(0.5));
+        assert_eq!(trade.price.0, dec!(12));
+        assert_eq!(fill.size_filled, dec!(0.5));
+        assert_eq!(fill.size_remaining, dec!(0.5));
+        assert_eq!(fill.price, dec!(12));
+        assert_matches!(fill.side, Side::Bid);
+
+        let a_portfolio = db.get_portfolio("a").await?;
+        assert_eq!(a_portfolio.total_balance, dec!(94));
+        assert_eq!(a_portfolio.available_balance, dec!(98));
+        assert_eq!(
+            &a_portfolio.market_exposures,
+            &[MarketExposure {
+                market_id: 1,
+                position: Text(dec!(0.5)),
+                total_bid_size: Text(dec!(0.5)),
+                total_bid_value: Text(dec!(6)),
+                total_offer_size: Text(dec!(1)),
+                total_offer_value: Text(dec!(16)),
+                min_settlement: Text(dec!(10)),
+                max_settlement: Text(dec!(20)),
+                ..Default::default()
+            }]
+        );
+
+        let b_portfolio = db.get_portfolio("b").await?;
+        assert_eq!(b_portfolio.total_balance, dec!(106));
+        assert_eq!(b_portfolio.available_balance, dec!(96));
+        assert_eq!(
+            &b_portfolio.market_exposures,
+            &[MarketExposure {
+                market_id: 1,
+                position: Text(dec!(-0.5)),
+                min_settlement: Text(dec!(10)),
+                max_settlement: Text(dec!(20)),
+                ..Default::default()
+            }]
+        );
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("users", "markets"))]
+    async fn test_multiple_market_exposure(pool: SqlitePool) -> SqlxResult<()> {
+        let db = DB { pool };
+
+        let _ = db
+            .create_order(1, "a", dec!(15), dec!(10), Side::Bid)
+            .await?;
+
+        let order_status = db
+            .create_order(2, "a", dec!(5), dec!(15), Side::Bid)
+            .await?;
+
+        assert_matches!(order_status, CreateOrderStatus::InsufficientFunds);
+
+        let _ = db
+            .create_order(2, "a", dec!(5), dec!(10), Side::Bid)
+            .await?;
+
+        let a_portfolio = db.get_portfolio("a").await?;
+
+        assert_eq!(a_portfolio.total_balance, dec!(100));
+        assert_eq!(a_portfolio.available_balance, dec!(0));
+        assert_eq!(
+            &a_portfolio.market_exposures,
+            &[
+                MarketExposure {
+                    market_id: 1,
+                    total_bid_size: Text(dec!(10)),
+                    total_bid_value: Text(dec!(150)),
+                    min_settlement: Text(dec!(10)),
+                    max_settlement: Text(dec!(20)),
+                    ..Default::default()
+                },
+                MarketExposure {
+                    market_id: 2,
+                    total_bid_size: Text(dec!(10)),
+                    total_bid_value: Text(dec!(50)),
+                    max_settlement: Text(dec!(10)),
+                    ..Default::default()
+                }
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("users", "markets"))]
+    async fn test_multiple_fills_and_settle(pool: SqlitePool) -> SqlxResult<()> {
+        let db = DB { pool };
+
+        let _ = db.create_order(2, "a", dec!(3), dec!(1), Side::Bid).await?;
+        let _ = db.create_order(2, "a", dec!(4), dec!(1), Side::Bid).await?;
+        let _ = db.create_order(2, "a", dec!(5), dec!(1), Side::Bid).await?;
+        let _ = db.create_order(2, "a", dec!(6), dec!(1), Side::Bid).await?;
+
+        let order_status = db
+            .create_order(2, "b", dec!(3.5), dec!(4), Side::Offer)
+            .await?;
+
+        let CreateOrderStatus::Success {
+            trades,
+            fills,
+            order: Some(order),
+        } = order_status
+        else {
+            panic!("expected success order");
+        };
+
+        assert_eq!(order.size.0, dec!(1));
+        assert_eq!(order.price.0, dec!(3.5));
+        assert_matches!(order.side.0, Side::Offer);
+
+        assert_eq!(trades.len(), 3);
+        let first_trade = &trades[0];
+        assert_eq!(first_trade.size.0, dec!(1));
+        assert_eq!(first_trade.price.0, dec!(6));
+        assert_eq!(first_trade.buyer_id, "a");
+        assert_eq!(first_trade.seller_id, "b");
+
+        assert_eq!(fills.len(), 3);
+        let first_fill = &fills[0];
+        assert_eq!(first_fill.size_filled, dec!(1));
+        assert_eq!(first_fill.size_remaining, dec!(0));
+        assert_eq!(first_fill.price, dec!(6));
+        assert_matches!(first_fill.side, Side::Bid);
+
+        let a_portfolio = db.get_portfolio("a").await?;
+        assert_eq!(a_portfolio.total_balance, dec!(85));
+        assert_eq!(a_portfolio.available_balance, dec!(82));
+        assert_eq!(
+            &a_portfolio.market_exposures,
+            &[MarketExposure {
+                market_id: 2,
+                position: Text(dec!(3)),
+                total_bid_size: Text(dec!(1)),
+                total_bid_value: Text(dec!(3)),
+                max_settlement: Text(dec!(10)),
+                ..Default::default()
+            }]
+        );
+
+        let b_portfolio = db.get_portfolio("b").await?;
+        assert_eq!(b_portfolio.total_balance, dec!(115));
+        assert_eq!(b_portfolio.available_balance, dec!(78.5));
+        assert_eq!(
+            &b_portfolio.market_exposures,
+            &[MarketExposure {
+                market_id: 2,
+                position: Text(dec!(-3)),
+                total_offer_size: Text(dec!(1)),
+                total_offer_value: Text(dec!(3.5)),
+                max_settlement: Text(dec!(10)),
+                ..Default::default()
+            }]
+        );
+
+        let market = db.settle_market(2, dec!(7), "a").await?;
+        assert_matches!(market, SettleMarketStatus::Success(_));
+
+        let a_portfolio = db.get_portfolio("a").await?;
+        assert_eq!(a_portfolio.total_balance, dec!(106));
+        assert_eq!(a_portfolio.available_balance, dec!(106));
+        assert_eq!(a_portfolio.market_exposures.len(), 0);
+
+        let b_portfolio = db.get_portfolio("b").await?;
+        assert_eq!(b_portfolio.total_balance, dec!(94));
+        assert_eq!(b_portfolio.available_balance, dec!(94));
+        assert_eq!(b_portfolio.market_exposures.len(), 0);
+
+        let all_orders: Vec<Order> = db.get_market_orders(2).try_collect().await.unwrap();
+        assert_eq!(all_orders.len(), 0);
+
+        let trades: Vec<Trade> = db.get_market_trades(2).try_collect().await.unwrap();
+        assert_eq!(trades.len(), 3);
+        assert_eq!(
+            trades.iter().map(|t| t.size.0).all_equal_value(),
+            Ok(dec!(1))
+        );
+        assert_eq!(
+            trades.iter().map(|t| t.price.0).collect::<HashSet<_>>(),
+            HashSet::from([dec!(4), dec!(5), dec!(6)])
+        );
+
+        Ok(())
+    }
 }
