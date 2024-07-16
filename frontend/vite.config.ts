@@ -5,10 +5,19 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
 		proxy: {
-			'/api': 'http://localhost:8080'
+			'/api': {
+				target: 'ws://localhost:8080',
+				ws: true
+			}
 		}
 	},
 	ssr: {
 		noExternal: ['@kinde-oss/kinde-auth-pkce-js']
+	},
+	optimizeDeps: { include: ['schema-js'] },
+	build: {
+		commonjsOptions: {
+			include: [/schema-js/, /node_modules/]
+		}
 	}
 });

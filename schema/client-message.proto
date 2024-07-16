@@ -1,13 +1,10 @@
 syntax = "proto3";
 package websocket_api;
 
-import "subscribe-market.proto";
-import "unsubscribe-market.proto";
 import "make-payment.proto";
 import "create-market.proto";
 import "settle-market.proto";
 import "create-order.proto";
-import "cancel-order.proto";
 import "out.proto";
 
 message ClientMessage {
@@ -24,10 +21,24 @@ message ClientMessage {
     CreateOrder create_order = 10;
     CancelOrder cancel_order = 11;
     Out out = 12;
+    Authenticate authenticate = 13;
+  }
+
+  message SubscribePortfolio {}
+  message UnSubscribePortfolio {}
+  message SubscribeMarkets {}
+  message UnSubscribeMarkets {}
+  message CancelOrder {
+    uint64 id = 1;
+  }
+  message SubscribeMarket {
+    uint64 id = 1;
+  }
+  message UnSubscribeMarket {
+    uint64 id = 1;
+  }
+  message Authenticate {
+    string jwt = 1;
   }
 }
 
-message SubscribePortfolio {}
-message UnSubscribePortfolio {}
-message SubscribeMarkets {}
-message UnSubscribeMarkets {}

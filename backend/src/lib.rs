@@ -8,3 +8,4 @@ pub mod websocket_api {
 
 pub mod auth;
 pub mod db;
+pub mod handle_socket;

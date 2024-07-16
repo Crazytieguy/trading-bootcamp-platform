@@ -23,7 +23,7 @@ pub struct DB {
 type SqlxResult<T> = Result<T, sqlx::Error>;
 
 impl DB {
-    #[instrument]
+    #[instrument(err)]
     pub async fn init() -> anyhow::Result<Self> {
         let connection_options = SqliteConnectOptions::from_str(&env::var("DATABASE_URL")?)?
             .create_if_missing(true)
@@ -106,7 +106,7 @@ impl DB {
         Ok(Self { pool })
     }
 
-    #[instrument]
+    #[instrument(err, skip(self))]
     pub async fn ensure_user_created(&self, id: &str, initial_balance: Decimal) -> SqlxResult<()> {
         let balance = Text(initial_balance);
         sqlx::query!(
@@ -119,18 +119,15 @@ impl DB {
         Ok(())
     }
 
-    #[instrument]
     pub async fn get_portfolio(&self, user_id: &str) -> SqlxResult<Portfolio> {
         get_portfolio(&mut self.pool.begin().await?, user_id).await
     }
 
-    #[instrument]
     pub fn get_markets(&self) -> BoxStream<SqlxResult<Market>> {
         sqlx::query_as!(Market, r#"SELECT id, name, description, owner_id, created_at, min_settlement as "min_settlement: _", max_settlement as "max_settlement: _", settled_price as "settled_price: _" FROM market"#)
             .fetch(&self.pool)
     }
 
-    #[instrument]
     pub fn get_market_orders(&self, market_id: i64) -> BoxStream<SqlxResult<Order>> {
         // Can't use the macro due to https://github.com/launchbadge/sqlx/issues/1151
         // sqlx::query_as!(Order, r#"SELECT id as "id!", market_id, owner_id, created_at, size as "size: _", price as "price: _", side as "side: _" FROM "order" WHERE market_id = ?"#, market_id)
@@ -140,7 +137,6 @@ impl DB {
         .fetch(&self.pool)
     }
 
-    #[instrument]
     pub fn get_market_trades(&self, market_id: i64) -> BoxStream<SqlxResult<Trade>> {
         // Can't use the macro due to https://github.com/launchbadge/sqlx/issues/1151
         // sqlx::query_as!(Trade, r#"SELECT id as "id!", market_id, buyer_id, seller_id, size as "size: _", price as "price: _", created_at FROM trade WHERE market_id = ?"#, market_id)
@@ -150,7 +146,7 @@ impl DB {
         .fetch(&self.pool)
     }
 
-    #[instrument]
+    #[instrument(err, skip(self))]
     pub async fn make_payment(
         &self,
         payer_id: &str,
@@ -213,7 +209,7 @@ impl DB {
         Ok(MakePaymentStatus::Success(payment))
     }
 
-    #[instrument]
+    #[instrument(err, skip(self))]
     pub async fn create_market(
         &self,
         name: &str,
@@ -241,7 +237,7 @@ impl DB {
         Ok(CreateMarketStatus::Success(market))
     }
 
-    #[instrument]
+    #[instrument(err, skip(self))]
     pub async fn settle_market(
         &self,
         id: i64,
@@ -314,7 +310,7 @@ impl DB {
         Ok(SettleMarketStatus::Success(market))
     }
 
-    #[instrument]
+    #[instrument(err, skip(self))]
     pub async fn create_order(
         &self,
         market_id: i64,
@@ -510,7 +506,7 @@ impl DB {
         })
     }
 
-    #[instrument]
+    #[instrument(err, skip(self))]
     pub async fn cancel_order(&self, id: i64, owner_id: &str) -> SqlxResult<CancelOrderStatus> {
         let mut transaction = self.pool.begin().await?;
 
@@ -579,6 +575,7 @@ impl DB {
     }
 }
 
+#[instrument(err, skip(transaction))]
 async fn get_portfolio(
     transaction: &mut Transaction<'_, Sqlite>,
     user_id: &str,
@@ -611,6 +608,7 @@ async fn get_portfolio(
     })
 }
 
+#[instrument(err, skip(transaction))]
 async fn update_exposure_cache<'a>(
     transaction: &mut Transaction<'a, Sqlite>,
     is_new: bool,

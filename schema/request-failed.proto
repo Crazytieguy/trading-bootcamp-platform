@@ -12,5 +12,3 @@ message RequestFailed {
     string message = 1;
   }
 }
-
-

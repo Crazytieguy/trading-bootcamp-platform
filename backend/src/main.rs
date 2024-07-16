@@ -1,10 +1,10 @@
 use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
+    extract::{State, WebSocketUpgrade},
+    response::Response,
     routing::get,
     Router,
 };
-use backend::{auth::Claims, db::DB};
+use backend::db::DB;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -20,11 +20,12 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let _db = DB::init().await?;
+    let db = DB::init().await?;
 
     let app = Router::new()
-        .route("/api", get(example_auth_handler))
-        .layer(TraceLayer::new_for_http());
+        .route("/api", get(api))
+        .layer(TraceLayer::new_for_http())
+        .with_state(db);
 
     let listener = TcpListener::bind("127.0.0.1:8080").await?;
     tracing::info!("Listening on {}", listener.local_addr()?);
@@ -32,9 +33,6 @@ async fn main() -> anyhow::Result<()> {
 }
 
 #[axum::debug_handler]
-async fn example_auth_handler(claims: Claims) -> Response {
-    let Ok(claims) = serde_json::to_string(&claims) else {
-        return (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response();
-    };
-    claims.into_response()
+async fn api(ws: WebSocketUpgrade, State(db): State<DB>) -> Response {
+    ws.on_upgrade(move |socket| backend::handle_socket::handle_socket(socket, db))
 }

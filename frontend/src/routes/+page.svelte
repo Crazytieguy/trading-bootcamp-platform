@@ -1,26 +1,31 @@
-<script land="ts">
+<script lang="ts">
 	import { kinde } from '$lib/auth';
 	import { Button } from '$lib/components/ui/button/index';
-	let responseData = {};
+	import { websocket_api } from 'schema-js';
+
 	const testBackend = async () => {
 		const accessToken = await kinde.getToken();
-		const idToken = await kinde.getIdToken();
-		console.log({ accessToken, idToken });
-		const res = await fetch('/api', {
-			headers: {
-				Authorization: `Bearer ${accessToken}`
-			}
-		});
-		const data = await res.json();
-		console.log(data);
-		responseData = data;
+		if (!accessToken) {
+			console.log('no access token');
+			return;
+		}
+		const socket = new WebSocket('/api');
+		socket.onopen = () => {
+      const authenticate = websocket_api.ClientMessage.encode({
+        authenticate: {
+          jwt: accessToken
+        }
+      }).finish();
+			socket.send(authenticate);
+		};
+		socket.onmessage = async (event) => {
+      const data = await event.data.arrayBuffer();
+      const response = websocket_api.ServerMessage.decode(new Uint8Array(data));
+      console.log(response);
+		};
 	};
 </script>
 
 <main class="container">
 	<Button class="my-4" on:click={testBackend}>Test Backend</Button>
-
-	{#if responseData}
-		<pre>{JSON.stringify(responseData, null, 2)}</pre>
-	{/if}
 </main>

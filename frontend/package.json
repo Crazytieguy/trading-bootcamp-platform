@@ -3,9 +3,8 @@
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
-		"generate-schema": "pbjs -t static-module -w commonjs -o src/lib/schema/index.js ../schema/server-message.proto ../schema/client-message.proto && pbts -o src/lib/schema/index.d.ts src/lib/schema/index.js",
-		"dev": "pnpm generate-schema && vite dev",
-		"build": "pnpm generate-schema && vite build",
+		"dev": "vite dev --force",
+		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -26,7 +25,6 @@
 		"prettier": "^3.1.1",
 		"prettier-plugin-svelte": "^3.1.2",
 		"prettier-plugin-tailwindcss": "^0.6.4",
-		"protobufjs-cli": "^1.1.2",
 		"svelte": "^4.2.7",
 		"svelte-check": "^3.6.0",
 		"tailwindcss": "^3.4.4",
@@ -37,12 +35,12 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"schema-js": "workspace:*",
 		"@kinde-oss/kinde-auth-pkce-js": "^4.0.0",
 		"bits-ui": "^0.21.10",
 		"clsx": "^2.1.1",
 		"lucide-svelte": "^0.396.0",
 		"mode-watcher": "^0.3.1",
-		"protobufjs": "^7.3.2",
 		"tailwind-merge": "^2.3.0",
 		"tailwind-variants": "^0.2.1"
 	}

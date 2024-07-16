@@ -24,11 +24,13 @@ message ServerMessage {
     Trade trade_state = 9;
     Payment payment_state = 10;
     RequestFailed request_failed = 11;
+    Authenticated authenticated = 12;
   }
+  message MarketsSubscribed {}
+  
+  message MarketSubscribed {
+    uint64 id = 1;
+  }
+  message Authenticated {}
 }
 
-message MarketsSubscribed {}
-
-message MarketSubscribed {
-  uint64 id = 1;
-}

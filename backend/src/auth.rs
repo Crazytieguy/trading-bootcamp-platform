@@ -21,7 +21,7 @@ struct AuthConfig {
     jwk_set: JwkSet,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "key")]
 pub enum Role {
     #[serde(rename = "admin")]
@@ -32,8 +32,8 @@ pub enum Role {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    sub: String,
-    roles: Vec<Role>,
+    pub sub: String,
+    pub roles: Vec<Role>,
 }
 
 type AuthConfigFuture = impl Future<Output = AuthConfig>;
@@ -66,9 +66,8 @@ impl<S> FromRequestParts<S> for Claims {
             .map_err(|_| {
                 (StatusCode::UNAUTHORIZED, "Missing Authorization header").into_response()
             })?;
-        let auth_config = &*Pin::static_ref(&AUTH_CONFIG).get().await;
         let token = bearer.token();
-        let claims = validate_jwt(auth_config, token).await.map_err(|e| {
+        let claims = validate_jwt(token).await.map_err(|e| {
             tracing::error!("JWT validation failed: {:?}", e);
             (StatusCode::UNAUTHORIZED, "Bad JWT").into_response()
         })?;
@@ -76,18 +75,19 @@ impl<S> FromRequestParts<S> for Claims {
     }
 }
 
-async fn validate_jwt(auth_details: &AuthConfig, token: &str) -> anyhow::Result<Claims> {
+pub async fn validate_jwt(token: &str) -> anyhow::Result<Claims> {
+    let auth_config = &*Pin::static_ref(&AUTH_CONFIG).get().await;
     let header = jsonwebtoken::decode_header(token)?;
     let Some(kid) = header.kid else {
         anyhow::bail!("Missing kid")
     };
-    let Some(jwk) = auth_details.jwk_set.find(&kid) else {
+    let Some(jwk) = auth_config.jwk_set.find(&kid) else {
         anyhow::bail!("kid not in JwkSet")
     };
     let decoding_key = DecodingKey::from_jwk(jwk)?;
     let mut validation = Validation::new(Algorithm::RS256);
-    validation.set_audience(&[&auth_details.audience]);
-    validation.set_issuer(&[&auth_details.issuer]);
+    validation.set_audience(&[&auth_config.audience]);
+    validation.set_issuer(&[&auth_config.issuer]);
     let token = jsonwebtoken::decode::<Claims>(token, &decoding_key, &validation)?;
     Ok(token.claims)
 }
