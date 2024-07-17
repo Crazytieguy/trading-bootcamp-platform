@@ -157,6 +157,16 @@ impl DB {
     }
 
     #[instrument(err, skip(self))]
+    pub async fn market_exists(&self, id: i64) -> SqlxResult<bool> {
+        sqlx::query_scalar!(
+            r#"SELECT EXISTS(SELECT 1 FROM market WHERE id = ?) as "exists!: bool""#,
+            id
+        )
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    #[instrument(err, skip(self))]
     pub async fn make_payment(
         &self,
         payer_id: &str,

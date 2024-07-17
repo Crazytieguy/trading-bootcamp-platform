@@ -54,7 +54,8 @@ async fn handle_socket_fallible(
             Some((_, msg)) = subscription_stream.next() => {
                 match msg {
                     Ok(msg) => socket.send(msg).await?,
-                    Err(BroadcastStreamRecvError::Lagged(_)) => {
+                    Err(BroadcastStreamRecvError::Lagged(n)) => {
+                        tracing::warn!("Lagged {n}");
                         // TODO: handle lagged
                     }
                 }
@@ -65,6 +66,9 @@ async fn handle_socket_fallible(
                     break Ok(())
                 };
                 let msg = msg?;
+                if let ws::Message::Close(_) = msg {
+                    break Ok(());
+                }
                 let ws::Message::Binary(msg) = msg else {
                     let resp = request_failed("Unknown", "Expected Binary message");
                     socket.send(resp).await?;
@@ -208,6 +212,11 @@ async fn handle_client_message(
             // TODO: if the client isn't subscribed to markets they won't get a response
         }
         CM::SubscribeMarketData(SubscribeMarketData { id }) => {
+            if !db.market_exists(id).await? {
+                let resp = request_failed("SubscribeMarketData", "Market not found");
+                socket.send(resp).await?;
+                return Ok(());
+            }
             let stream = subscriptions.subscribe_market_data(id);
             subscription_stream.insert(StreamKey::MarketData(id), stream.into());
             let orders: Vec<_> = db
@@ -272,6 +281,7 @@ async fn handle_client_message(
                     for user_id in fills.iter().map(|fill| &fill.owner_id) {
                         subscriptions.notify_user_portfolio(user_id);
                     }
+                    subscriptions.notify_user_portfolio(&claims.sub);
                     let resp = server_message(SM::OrderCreated(OrderCreated {
                         user_id: claims.sub.clone(),
                         order: order.map(Order::from),
@@ -300,6 +310,7 @@ async fn handle_client_message(
                         market_id,
                     }));
                     subscriptions.notify_market_data(market_id, resp);
+                    subscriptions.notify_user_portfolio(&claims.sub);
                 }
                 CancelOrderStatus::NotOwner => {
                     let resp = request_failed("CancelOrder", "Not order owner");
@@ -373,6 +384,7 @@ async fn handle_client_message(
                     market_id: out.market_id,
                 }));
                 subscriptions.notify_market_data(out.market_id, resp);
+                subscriptions.notify_user_portfolio(&claims.sub);
             }
             let resp = server_message(SM::Out(out));
             socket.send(resp).await?;
@@ -422,7 +434,7 @@ async fn authenticate(socket: &mut WebSocket) -> anyhow::Result<Claims> {
 }
 
 fn request_failed(kind: &str, message: &str) -> ws::Message {
-    tracing::error!("Request failed: {kind}: {message}");
+    tracing::error!("Request failed: {kind}, {message}");
     server_message(SM::RequestFailed(RequestFailed {
         request_details: Some(RequestDetails { kind: kind.into() }),
         error_details: Some(ErrorDetails {

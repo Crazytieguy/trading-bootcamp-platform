@@ -14,7 +14,7 @@ pub struct Subscriptions {
 }
 
 struct SubscriptionsInner {
-    /// user id -> Notify
+    /// user id -> watch::Sender<()>
     portfolio: RwLock<FxHashMap<String, watch::Sender<()>>>,
     /// contains serialized protobuf Market or MarketSettled
     markets: broadcast::Sender<ws::Message>,
