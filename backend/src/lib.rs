@@ -27,3 +27,4 @@ pub mod auth;
 pub mod db;
 pub mod handle_socket;
 pub mod subscriptions;
+pub mod convert;

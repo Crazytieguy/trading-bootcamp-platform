@@ -33,13 +33,13 @@ message ClientMessage {
   message SubscribePayments {}
   message UnSubscribePayments {}
   message CancelOrder {
-    uint64 id = 1;
+    int64 id = 1;
   }
   message SubscribeMarketData {
-    uint64 id = 1;
+    int64 id = 1;
   }
   message UnSubscribeMarketData {
-    uint64 id = 1;
+    int64 id = 1;
   }
   message Authenticate {
     string jwt = 1;

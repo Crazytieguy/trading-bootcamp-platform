@@ -12,8 +12,8 @@ message OrderCreated {
   repeated Trade trades = 4;
 
   message OrderFill {
-    uint64 id = 1;
-    uint64 market_id = 2;
+    int64 id = 1;
+    int64 market_id = 2;
     string owner_id = 3;
     string size_filled = 4;
     string size_remaining = 5;

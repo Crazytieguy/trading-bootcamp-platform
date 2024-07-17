@@ -4,7 +4,7 @@ package websocket_api;
 import "side.proto";
 
 message CreateOrder {
-  uint64 market_id = 2;
+  int64 market_id = 2;
   string price = 5;
   string size = 6;
   Side side = 7;

@@ -119,7 +119,7 @@ impl DB {
         Ok(())
     }
 
-    pub async fn get_portfolio(&self, user_id: &str) -> SqlxResult<Portfolio> {
+    pub async fn get_portfolio(&self, user_id: &str) -> SqlxResult<Option<Portfolio>> {
         get_portfolio(&mut self.pool.begin().await?, user_id).await
     }
 
@@ -146,6 +146,16 @@ impl DB {
         .fetch(&self.pool)
     }
 
+    pub fn get_payments<'a>(&'a self, user_id: &'a str) -> BoxStream<'a, SqlxResult<Payment>> {
+        // Can't use the macro due to https://github.com/launchbadge/sqlx/issues/1151
+        // sqlx::query_as!(Payment, r#"SELECT id, payer_id, recipient_id, amount as "amount: _", note, created_at FROM payment WHERE payer_id = ? OR recipient_id = ?"#, user_id, user_id)
+        //     .fetch(&self.pool)
+        sqlx::query_as::<_, Payment>(r#"SELECT id, payer_id, recipient_id, amount, note, created_at FROM payment WHERE payer_id = ? OR recipient_id = ?"#)
+        .bind(user_id)
+        .bind(user_id)
+        .fetch(&self.pool)
+    }
+
     #[instrument(err, skip(self))]
     pub async fn make_payment(
         &self,
@@ -160,18 +170,24 @@ impl DB {
 
         let mut transaction = self.begin_immediate().await?;
 
-        let payer_portfolio = get_portfolio(&mut transaction, payer_id).await?;
+        let Some(payer_portfolio) = get_portfolio(&mut transaction, payer_id).await? else {
+            return Ok(MakePaymentStatus::PayerNotFound);
+        };
 
         if payer_portfolio.available_balance < amount {
             return Ok(MakePaymentStatus::InsufficientFunds);
         }
 
-        let Text(recipient_balance) = sqlx::query_scalar!(
+        let recipient_balance = sqlx::query_scalar!(
             r#"SELECT balance as "balance: Text<Decimal>" FROM user WHERE id = ?"#,
             recipient_id
         )
-        .fetch_one(transaction.as_mut())
+        .fetch_optional(transaction.as_mut())
         .await?;
+
+        let Some(Text(recipient_balance)) = recipient_balance else {
+            return Ok(MakePaymentStatus::RecipientNotFound);
+        };
 
         let payer_new_balance = Text(payer_portfolio.total_balance - amount);
         let recipient_new_balance = Text(recipient_balance + amount);
@@ -309,10 +325,7 @@ impl DB {
         transaction.commit().await?;
 
         let affected_users = user_positions.into_iter().map(|row| row.user_id).collect();
-        Ok(SettleMarketStatus::Success {
-            market,
-            affected_users,
-        })
+        Ok(SettleMarketStatus::Success { affected_users })
     }
 
     #[instrument(err, skip(self))]
@@ -329,8 +342,13 @@ impl DB {
             r#"SELECT min_settlement as "min_settlement: Text<Decimal>", max_settlement as "max_settlement: Text<Decimal>", settled_price IS NOT NULL as "settled: bool" FROM market WHERE id = ?"#,
             market_id
         )
-        .fetch_one(transaction.as_mut())
+        .fetch_optional(transaction.as_mut())
         .await?;
+
+        let Some(market) = market else {
+            return Ok(CreateOrderStatus::MarketNotFound);
+        };
+
         if market.settled {
             return Ok(CreateOrderStatus::MarketSettled);
         }
@@ -354,6 +372,11 @@ impl DB {
         .await?;
 
         let portfolio = get_portfolio(&mut transaction, owner_id).await?;
+
+        let Some(portfolio) = portfolio else {
+            return Ok(CreateOrderStatus::UserNotFound);
+        };
+
         if portfolio.available_balance.is_sign_negative() {
             return Ok(CreateOrderStatus::InsufficientFunds);
         }
@@ -530,8 +553,12 @@ impl DB {
 
         let order =
             sqlx::query_as!(Order, r#"DELETE FROM "order" WHERE id = ? RETURNING id, market_id, owner_id, created_at, size as "size: _", price as "price: _", side as "side: _""#, id)
-                .fetch_one(transaction.as_mut())
+                .fetch_optional(transaction.as_mut())
                 .await?;
+
+        let Some(order) = order else {
+            return Ok(CancelOrderStatus::NotFound);
+        };
 
         if order.owner_id != owner_id {
             return Ok(CancelOrderStatus::NotOwner);
@@ -554,7 +581,9 @@ impl DB {
 
         transaction.commit().await?;
 
-        Ok(CancelOrderStatus::Success)
+        Ok(CancelOrderStatus::Success {
+            market_id: order.market_id,
+        })
     }
 
     #[instrument(err, skip(self))]
@@ -598,13 +627,17 @@ impl DB {
 async fn get_portfolio(
     transaction: &mut Transaction<'_, Sqlite>,
     user_id: &str,
-) -> SqlxResult<Portfolio> {
+) -> SqlxResult<Option<Portfolio>> {
     let total_balance = sqlx::query_scalar!(
         r#"SELECT balance as "balance: Text<Decimal>" FROM user WHERE id = ?"#,
         user_id
     )
-    .fetch_one(transaction.as_mut())
+    .fetch_optional(transaction.as_mut())
     .await?;
+
+    let Some(total_balance) = total_balance else {
+        return Ok(None);
+    };
 
     let market_exposures = sqlx::query_as!(
         MarketExposure,
@@ -620,11 +653,11 @@ async fn get_portfolio(
             .map(MarketExposure::worst_case_outcome)
             .sum::<Decimal>();
 
-    Ok(Portfolio {
+    Ok(Some(Portfolio {
         total_balance: total_balance.0,
         available_balance,
         market_exposures,
-    })
+    }))
 }
 
 #[instrument(err, skip(transaction))]
@@ -722,10 +755,18 @@ impl MarketExposure {
 }
 
 #[derive(Debug)]
+pub enum GetPortfolioStatus {
+    Success(Portfolio),
+    NotFound,
+}
+
+#[derive(Debug)]
 pub enum CreateOrderStatus {
+    MarketNotFound,
     MarketSettled,
     InvalidPrice,
     InsufficientFunds,
+    UserNotFound,
     Success {
         order: Option<Order>,
         fills: Vec<OrderFill>,
@@ -735,13 +776,13 @@ pub enum CreateOrderStatus {
 
 #[derive(Debug)]
 pub struct OrderFill {
-    id: i64,
-    market_id: i64,
-    owner_id: String,
-    size_filled: Decimal,
-    size_remaining: Decimal,
-    price: Decimal,
-    side: Side,
+    pub id: i64,
+    pub market_id: i64,
+    pub owner_id: String,
+    pub size_filled: Decimal,
+    pub size_remaining: Decimal,
+    pub price: Decimal,
+    pub side: Side,
 }
 
 #[derive(Debug)]
@@ -752,16 +793,14 @@ pub enum CreateMarketStatus {
 
 #[derive(Debug)]
 pub enum CancelOrderStatus {
-    Success,
+    Success { market_id: i64 },
     NotOwner,
+    NotFound,
 }
 
 #[derive(Debug)]
 pub enum SettleMarketStatus {
-    Success {
-        market: Market,
-        affected_users: Vec<String>,
-    },
+    Success { affected_users: Vec<String> },
     AlreadySettled,
     NotOwner,
     InvalidSettlementPrice,
@@ -772,9 +811,11 @@ pub enum MakePaymentStatus {
     Success(Payment),
     InsufficientFunds,
     InvalidAmount,
+    PayerNotFound,
+    RecipientNotFound,
 }
 
-#[derive(Debug)]
+#[derive(Debug, FromRow)]
 pub struct Payment {
     pub id: i64,
     pub payer_id: String,
@@ -891,11 +932,11 @@ mod tests {
         let payment_status = db.make_payment("a", "b", dec!(10), "test payment").await?;
         assert_matches!(payment_status, MakePaymentStatus::Success(_));
 
-        let a_portfolio = db.get_portfolio("a").await?;
+        let a_portfolio = db.get_portfolio("a").await?.unwrap();
         assert_eq!(a_portfolio.total_balance, dec!(90));
         assert_eq!(a_portfolio.available_balance, dec!(90));
 
-        let b_portfolio = db.get_portfolio("b").await?;
+        let b_portfolio = db.get_portfolio("b").await?.unwrap();
         assert_eq!(b_portfolio.total_balance, dec!(110));
         assert_eq!(b_portfolio.available_balance, dec!(110));
         Ok(())
@@ -937,7 +978,7 @@ mod tests {
             _ => panic!("expected success order"),
         };
 
-        let a_portfolio = db.get_portfolio("a").await?;
+        let a_portfolio = db.get_portfolio("a").await?.unwrap();
         assert_eq!(a_portfolio.total_balance, dec!(100));
         assert_eq!(a_portfolio.available_balance, dec!(95));
         assert_eq!(
@@ -956,7 +997,7 @@ mod tests {
         let all_orders: Vec<Order> = db.get_market_orders(1).try_collect().await.unwrap();
         assert_eq!(all_orders.len(), 0);
 
-        let a_portfolio = db.get_portfolio("a").await?;
+        let a_portfolio = db.get_portfolio("a").await?.unwrap();
         assert_eq!(a_portfolio.total_balance, dec!(100));
         assert_eq!(a_portfolio.available_balance, dec!(100));
         assert_eq!(
@@ -983,7 +1024,7 @@ mod tests {
             CreateOrderStatus::Success { order: Some(_), .. }
         );
 
-        let a_portfolio = db.get_portfolio("a").await?;
+        let a_portfolio = db.get_portfolio("a").await?.unwrap();
         assert_eq!(a_portfolio.total_balance, dec!(100));
         assert_eq!(a_portfolio.available_balance, dec!(95));
         assert_eq!(
@@ -1012,7 +1053,7 @@ mod tests {
             .create_order(1, "a", dec!(16), dec!(1), Side::Offer)
             .await?;
 
-        let a_portfolio = db.get_portfolio("a").await?;
+        let a_portfolio = db.get_portfolio("a").await?.unwrap();
         assert_eq!(a_portfolio.total_balance, dec!(100));
         assert_eq!(a_portfolio.available_balance, dec!(96));
         assert_eq!(
@@ -1053,7 +1094,7 @@ mod tests {
         assert_eq!(fill.price, dec!(12));
         assert_matches!(fill.side, Side::Bid);
 
-        let a_portfolio = db.get_portfolio("a").await?;
+        let a_portfolio = db.get_portfolio("a").await?.unwrap();
         assert_eq!(a_portfolio.total_balance, dec!(94));
         assert_eq!(a_portfolio.available_balance, dec!(98));
         assert_eq!(
@@ -1071,7 +1112,7 @@ mod tests {
             }]
         );
 
-        let b_portfolio = db.get_portfolio("b").await?;
+        let b_portfolio = db.get_portfolio("b").await?.unwrap();
         assert_eq!(b_portfolio.total_balance, dec!(106));
         assert_eq!(b_portfolio.available_balance, dec!(96));
         assert_eq!(
@@ -1106,7 +1147,7 @@ mod tests {
             .create_order(2, "a", dec!(5), dec!(10), Side::Bid)
             .await?;
 
-        let a_portfolio = db.get_portfolio("a").await?;
+        let a_portfolio = db.get_portfolio("a").await?.unwrap();
 
         assert_eq!(a_portfolio.total_balance, dec!(100));
         assert_eq!(a_portfolio.available_balance, dec!(0));
@@ -1174,7 +1215,7 @@ mod tests {
         assert_eq!(first_fill.price, dec!(6));
         assert_matches!(first_fill.side, Side::Bid);
 
-        let a_portfolio = db.get_portfolio("a").await?;
+        let a_portfolio = db.get_portfolio("a").await?.unwrap();
         assert_eq!(a_portfolio.total_balance, dec!(85));
         assert_eq!(a_portfolio.available_balance, dec!(82));
         assert_eq!(
@@ -1189,7 +1230,7 @@ mod tests {
             }]
         );
 
-        let b_portfolio = db.get_portfolio("b").await?;
+        let b_portfolio = db.get_portfolio("b").await?.unwrap();
         assert_eq!(b_portfolio.total_balance, dec!(115));
         assert_eq!(b_portfolio.available_balance, dec!(78.5));
         assert_eq!(
@@ -1207,12 +1248,12 @@ mod tests {
         let market = db.settle_market(2, dec!(7), "a").await?;
         assert_matches!(market, SettleMarketStatus::Success { .. });
 
-        let a_portfolio = db.get_portfolio("a").await?;
+        let a_portfolio = db.get_portfolio("a").await?.unwrap();
         assert_eq!(a_portfolio.total_balance, dec!(106));
         assert_eq!(a_portfolio.available_balance, dec!(106));
         assert_eq!(a_portfolio.market_exposures.len(), 0);
 
-        let b_portfolio = db.get_portfolio("b").await?;
+        let b_portfolio = db.get_portfolio("b").await?.unwrap();
         assert_eq!(b_portfolio.total_balance, dec!(94));
         assert_eq!(b_portfolio.available_balance, dec!(94));
         assert_eq!(b_portfolio.market_exposures.len(), 0);

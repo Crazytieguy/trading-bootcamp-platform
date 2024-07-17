@@ -11,6 +11,7 @@ import "payments.proto";
 import "request-failed.proto";
 import "markets.proto";
 import "market-data.proto";
+import "out.proto";
 
 message ServerMessage {
   oneof message {
@@ -35,8 +36,7 @@ message ServerMessage {
   message UnSubscribedPortfolio {}
   message UnSubscribedMarkets {}
   message UnSubscribedMarketData {
-    uint64 id = 1;
+    int64 id = 1;
   }
   message UnSubscribedPayments {}
-  message Out {}
 }

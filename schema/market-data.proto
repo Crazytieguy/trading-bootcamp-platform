@@ -5,7 +5,7 @@ import "order.proto";
 import "trade.proto";
 
 message MarketData {
-  uint64 id = 1;
+  int64 id = 1;
   repeated Order orders = 2;
   repeated Trade trades = 3;
 }

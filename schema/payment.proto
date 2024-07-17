@@ -4,7 +4,7 @@ package websocket_api;
 import "google/protobuf/timestamp.proto";
 
 message Payment {
-  uint64 id = 1;
+  int64 id = 1;
   string payer_id = 2;
   string recipient_id = 3;
   string amount = 4;

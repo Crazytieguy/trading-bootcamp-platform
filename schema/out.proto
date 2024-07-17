@@ -2,5 +2,5 @@ syntax = "proto3";
 package websocket_api;
 
 message Out {
-  uint64 market_id = 1;
+  int64 market_id = 1;
 }
