@@ -1,25 +1,23 @@
 use crate::{
-    auth::{validate_jwt, Claims, Role},
-    db::DB,
-    websocket_api::{
+    auth::{validate_jwt, Claims, Role}, db::DB, subscriptions::Subscriptions, websocket_api::{
         client_message::Message as CM,
         request_failed::{ErrorDetails, RequestDetails},
         server_message::{Authenticated, Message as SM},
         ClientMessage, RequestFailed, ServerMessage,
-    },
+    }
 };
 use anyhow::bail;
 use axum::extract::{ws, ws::WebSocket};
 use prost::{bytes::Bytes, Message as _};
 use rust_decimal_macros::dec;
 
-pub async fn handle_socket(socket: WebSocket, db: DB) {
-    if let Err(e) = handle_socket_fallible(socket, db).await {
+pub async fn handle_socket(socket: WebSocket, db: DB, subscriptions: Subscriptions) {
+    if let Err(e) = handle_socket_fallible(socket, db, subscriptions).await {
         tracing::error!("Error handling socket: {e}");
     }
 }
 
-async fn handle_socket_fallible(mut socket: WebSocket, db: DB) -> anyhow::Result<()> {
+async fn handle_socket_fallible(mut socket: WebSocket, db: DB, _subscriptions: Subscriptions) -> anyhow::Result<()> {
     let claims = authenticate(&mut socket).await?;
     let is_trader = claims.roles.contains(&Role::Trader);
     let is_admin = claims.roles.contains(&Role::Admin);

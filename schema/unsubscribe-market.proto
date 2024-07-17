@@ -1,6 +1,0 @@
-syntax = "proto3";
-package websocket_api;
-
-message UnSubscribeMarket {
-  uint64 id = 1;
-}

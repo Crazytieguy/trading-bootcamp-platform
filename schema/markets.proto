@@ -1,0 +1,8 @@
+syntax = "proto3";
+package websocket_api;
+
+import "market.proto";
+
+message Markets {
+  repeated Market markets = 1;
+}

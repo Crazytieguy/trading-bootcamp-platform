@@ -288,7 +288,7 @@ impl DB {
         )
         .fetch_all(transaction.as_mut()).await?;
 
-        for user_position in user_positions {
+        for user_position in &user_positions {
             let Text(current_balance) = sqlx::query_scalar!(
                 r#"SELECT balance as "balance: Text<Decimal>" FROM user WHERE id = ?"#,
                 user_position.user_id
@@ -307,7 +307,12 @@ impl DB {
         }
 
         transaction.commit().await?;
-        Ok(SettleMarketStatus::Success(market))
+
+        let affected_users = user_positions.into_iter().map(|row| row.user_id).collect();
+        Ok(SettleMarketStatus::Success {
+            market,
+            affected_users,
+        })
     }
 
     #[instrument(err, skip(self))]
@@ -331,6 +336,26 @@ impl DB {
         }
         if price < market.min_settlement.0 || price > market.max_settlement.0 {
             return Ok(CreateOrderStatus::InvalidPrice);
+        }
+
+        update_exposure_cache(
+            &mut transaction,
+            true,
+            &OrderFill {
+                id: 0,
+                owner_id: owner_id.to_string(),
+                market_id,
+                size_filled: Decimal::ZERO,
+                size_remaining: size,
+                price,
+                side,
+            },
+        )
+        .await?;
+
+        let portfolio = get_portfolio(&mut transaction, owner_id).await?;
+        if portfolio.available_balance.is_sign_negative() {
+            return Ok(CreateOrderStatus::InsufficientFunds);
         }
 
         let side = Text(side);
@@ -410,7 +435,7 @@ impl DB {
         };
         update_exposure_cache(
             &mut transaction,
-            true,
+            false,
             &OrderFill {
                 id: 0,
                 owner_id: owner_id.to_string(),
@@ -490,13 +515,6 @@ impl DB {
         .execute(transaction.as_mut())
         .await?;
 
-        // TODO: we can actually check this at the start of the function,
-        // avoiding all the work in the invalid case
-        let portfolio = get_portfolio(&mut transaction, owner_id).await?;
-        if portfolio.available_balance.is_sign_negative() {
-            return Ok(CreateOrderStatus::InsufficientFunds);
-        }
-
         transaction.commit().await?;
 
         Ok(CreateOrderStatus::Success {
@@ -519,48 +537,49 @@ impl DB {
             return Ok(CancelOrderStatus::NotOwner);
         }
 
-        let current_exposure = sqlx::query!(
-            r#"SELECT total_bid_size as "total_bid_size: Text<Decimal>", total_offer_size as "total_offer_size: Text<Decimal>", total_bid_value as "total_bid_value: Text<Decimal>", total_offer_value as "total_offer_value: Text<Decimal>" FROM exposure_cache WHERE user_id = ? AND market_id = ?"#,
-            owner_id,
-            order.market_id,
+        update_exposure_cache(
+            &mut transaction,
+            true,
+            &OrderFill {
+                id: order.id,
+                owner_id: order.owner_id,
+                market_id: order.market_id,
+                size_filled: Decimal::ZERO,
+                size_remaining: -order.size.0,
+                price: order.price.0,
+                side: order.side.0,
+            },
         )
-        .fetch_one(transaction.as_mut())
         .await?;
-
-        match order.side.0 {
-            Side::Bid => {
-                let total_bid_size = Text(current_exposure.total_bid_size.0 - order.size.0);
-                let total_bid_value =
-                    Text(current_exposure.total_bid_value.0 - order.size.0 * order.price.0);
-                sqlx::query!(
-                    r#"UPDATE exposure_cache SET total_bid_size = ?, total_bid_value = ? WHERE user_id = ? AND market_id = ?"#,
-                    total_bid_size,
-                    total_bid_value,
-                    owner_id,
-                    order.market_id,
-                )
-                .execute(transaction.as_mut())
-                .await?;
-            }
-            Side::Offer => {
-                let total_offer_size = Text(current_exposure.total_offer_size.0 - order.size.0);
-                let total_offer_value =
-                    Text(current_exposure.total_offer_value.0 - order.size.0 * order.price.0);
-                sqlx::query!(
-                    r#"UPDATE exposure_cache SET total_offer_size = ?, total_offer_value = ? WHERE user_id = ? AND market_id = ?"#,
-                    total_offer_size,
-                    total_offer_value,
-                    owner_id,
-                    order.market_id,
-                )
-                .execute(transaction.as_mut())
-                .await?;
-            }
-        }
 
         transaction.commit().await?;
 
         Ok(CancelOrderStatus::Success)
+    }
+
+    #[instrument(err, skip(self))]
+    pub async fn out(&self, market_id: i64, owner_id: &str) -> SqlxResult<Vec<i64>> {
+        let mut transaction = self.pool.begin().await?;
+
+        let orders_affected = sqlx::query_scalar!(
+            r#"DELETE FROM "order" WHERE market_id = ? AND owner_id = ? RETURNING id as "id!""#,
+            market_id,
+            owner_id
+        )
+        .fetch_all(transaction.as_mut())
+        .await?;
+
+        if orders_affected.len() > 0 {
+            sqlx::query!(
+                r#"UPDATE exposure_cache SET total_bid_size = '0', total_offer_size = '0', total_bid_value = '0', total_offer_value = '0' WHERE user_id = ? AND market_id = ?"#,
+                owner_id,
+                market_id
+            )
+            .execute(transaction.as_mut())
+            .await?;
+        }
+
+        Ok(orders_affected)
     }
 
     async fn begin_immediate(&self) -> SqlxResult<sqlx::Transaction<Sqlite>> {
@@ -739,7 +758,10 @@ pub enum CancelOrderStatus {
 
 #[derive(Debug)]
 pub enum SettleMarketStatus {
-    Success(Market),
+    Success {
+        market: Market,
+        affected_users: Vec<String>,
+    },
     AlreadySettled,
     NotOwner,
     InvalidSettlementPrice,
@@ -1183,7 +1205,7 @@ mod tests {
         );
 
         let market = db.settle_market(2, dec!(7), "a").await?;
-        assert_matches!(market, SettleMarketStatus::Success(_));
+        assert_matches!(market, SettleMarketStatus::Success { .. });
 
         let a_portfolio = db.get_portfolio("a").await?;
         assert_eq!(a_portfolio.total_balance, dec!(106));

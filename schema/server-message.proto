@@ -4,33 +4,39 @@ package websocket_api;
 import "portfolio.proto";
 import "market.proto";
 import "market-settled.proto";
-import "order.proto";
 import "order-cancelled.proto";
-import "order-filled.proto";
-import "trade.proto";
+import "order-created.proto";
 import "payment.proto";
+import "payments.proto";
 import "request-failed.proto";
+import "markets.proto";
+import "market-data.proto";
 
 message ServerMessage {
   oneof message {
-    Portfolio portfolio_state = 1;
-    Market market_state = 2;
-    MarketsSubscribed markets_subscribed = 3;
-    MarketSubscribed market_subscribed = 4;
-    MarketSettled market_settled = 5;
-    Order order_state = 6;
-    OrderCancelled order_cancelled = 7;
-    OrderFilled order_filled = 8;
-    Trade trade_state = 9;
-    Payment payment_state = 10;
-    RequestFailed request_failed = 11;
-    Authenticated authenticated = 12;
-  }
-  message MarketsSubscribed {}
-  
-  message MarketSubscribed {
-    uint64 id = 1;
+    Portfolio portfolio = 1;
+    UnSubscribedPortfolio unsubscribed_portfolio = 2;
+    Markets markets = 3;
+    UnSubscribedMarkets unsubscribed_markets = 4;
+    Market market_created = 5;
+    MarketSettled market_settled = 6;
+    MarketData market_data = 7;
+    UnSubscribedMarketData unsubscribed_market_data = 8;
+    OrderCreated order_created = 9;
+    OrderCancelled order_cancelled = 10;
+    Payments payments = 11;
+    UnSubscribedPayments unsubscribed_payments = 12;
+    Payment payment_created = 13;
+    Out out = 14;
+    Authenticated authenticated = 15;
+    RequestFailed request_failed = 16;
   }
   message Authenticated {}
+  message UnSubscribedPortfolio {}
+  message UnSubscribedMarkets {}
+  message UnSubscribedMarketData {
+    uint64 id = 1;
+  }
+  message UnSubscribedPayments {}
+  message Out {}
 }
-

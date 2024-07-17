@@ -2,10 +2,7 @@ syntax = "proto3";
 package websocket_api;
 
 import "google/protobuf/timestamp.proto";
-import "trade.proto";
-import "order.proto";
 
-// Market
 message Market {
   uint64 id = 1;
   string name = 2;

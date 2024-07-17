@@ -1,0 +1,24 @@
+syntax = "proto3";
+package websocket_api;
+
+import "order.proto";
+import "trade.proto";
+import "side.proto";
+
+message OrderCreated {
+  string user_id = 1;
+  optional Order order = 2;
+  repeated OrderFill fills = 3;
+  repeated Trade trades = 4;
+
+  message OrderFill {
+    uint64 id = 1;
+    uint64 market_id = 2;
+    string owner_id = 3;
+    string size_filled = 4;
+    string size_remaining = 5;
+    string price = 6;
+    Side side = 7;
+  }
+}
+
