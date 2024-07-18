@@ -31,6 +31,8 @@ use tokio_stream::{
 pub async fn handle_socket(socket: WebSocket, db: DB, subscriptions: Subscriptions) {
     if let Err(e) = handle_socket_fallible(socket, db, subscriptions).await {
         tracing::error!("Error handling socket: {e}");
+    } else {
+        tracing::info!("Client disconnected");
     }
 }
 
