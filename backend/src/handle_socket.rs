@@ -36,57 +36,14 @@ async fn handle_socket_fallible(
     subscriptions: Subscriptions,
 ) -> anyhow::Result<()> {
     let claims = authenticate(&mut socket).await?;
-    let is_trader = claims.roles.contains(&Role::Trader);
     let is_admin = claims.roles.contains(&Role::Admin);
-    if is_trader {
-        let initial_balance = if is_admin { dec!(1_000_000) } else { dec!(0) };
-        db.ensure_user_created(&claims.sub, initial_balance).await?;
-    }
+    let initial_balance = if is_admin { dec!(1_000_000) } else { dec!(0) };
+    db.ensure_user_created(&claims.sub, initial_balance).await?;
     let mut portfolio_watcher = subscriptions.subscribe_portfolio(&claims.sub);
     let mut market_receiver = subscriptions.subscribe_market_data();
     let mut payment_receiver = subscriptions.subscribe_payments(&claims.sub);
-    let portfolio = db
-        .get_portfolio(&claims.sub)
-        .await?
-        .ok_or_else(|| anyhow!("Authenticated user not found"))?;
-    let portfolio_msg = server_message(SM::Portfolio(portfolio.into()));
-    socket.send(portfolio_msg).await?;
-    let mut markets = db.get_all_markets().map(|market| market.map(Market::from));
-    let mut all_live_orders = db.get_all_live_orders().map(|order| order.map(Order::from));
-    let mut all_trades = db.get_all_trades().map(|trade| trade.map(Trade::from));
-    let mut next_order = all_live_orders.try_next().await?;
-    let mut next_trade = all_trades.try_next().await?;
-    while let Some(mut market) = markets.try_next().await? {
-        let orders_stream = stream_chunk_for_market_id(
-            &mut next_order,
-            |order| order.market_id,
-            market.id,
-            &mut all_live_orders,
-        );
-        let trades_stream = stream_chunk_for_market_id(
-            &mut next_trade,
-            |trade| trade.market_id,
-            market.id,
-            &mut all_trades,
-        );
-        let (orders, trades) = tokio::join!(
-            orders_stream.try_collect::<Vec<_>>(),
-            trades_stream.try_collect::<Vec<_>>(),
-        );
-        let orders = orders?;
-        let trades = trades?;
-        market.orders = orders;
-        market.trades = trades;
-        let market_msg = server_message(SM::MarketData(market));
-        socket.send(market_msg).await?;
-    }
-    let payments = db
-        .get_payments(&claims.sub)
-        .map(|payment| payment.map(Payment::from))
-        .try_collect::<Vec<_>>()
-        .await?;
-    let payments_msg = server_message(SM::Payments(Payments { payments }));
-    socket.send(payments_msg).await?;
+    send_initial_data(&db, &claims, &mut socket).await?;
+
     loop {
         tokio::select! {
             biased;
@@ -122,6 +79,52 @@ async fn handle_socket_fallible(
             }
         }
     }
+}
+
+async fn send_initial_data(db: &DB, claims: &Claims, socket: &mut WebSocket) -> anyhow::Result<()> {
+    let portfolio = db
+        .get_portfolio(&claims.sub)
+        .await?
+        .ok_or_else(|| anyhow!("Authenticated user not found"))?;
+    let portfolio_msg = server_message(SM::Portfolio(portfolio.into()));
+    socket.send(portfolio_msg).await?;
+
+    let payments = db
+        .get_payments(&claims.sub)
+        .map(|payment| payment.map(Payment::from))
+        .try_collect::<Vec<_>>()
+        .await?;
+    let payments_msg = server_message(SM::Payments(Payments { payments }));
+    socket.send(payments_msg).await?;
+
+    let mut markets = db.get_all_markets().map(|market| market.map(Market::from));
+    let mut all_live_orders = db.get_all_live_orders().map(|order| order.map(Order::from));
+    let mut all_trades = db.get_all_trades().map(|trade| trade.map(Trade::from));
+    let mut next_order = all_live_orders.try_next().await?;
+    let mut next_trade = all_trades.try_next().await?;
+    while let Some(mut market) = markets.try_next().await? {
+        let orders_stream = stream_chunk_for_market_id(
+            &mut next_order,
+            |order| order.market_id,
+            market.id,
+            &mut all_live_orders,
+        );
+        let trades_stream = stream_chunk_for_market_id(
+            &mut next_trade,
+            |trade| trade.market_id,
+            market.id,
+            &mut all_trades,
+        );
+        let (orders, trades) = tokio::join!(
+            orders_stream.try_collect::<Vec<_>>(),
+            trades_stream.try_collect::<Vec<_>>(),
+        );
+        market.orders = orders?;
+        market.trades = trades?;
+        let market_msg = server_message(SM::MarketData(market));
+        socket.send(market_msg).await?;
+    }
+    Ok(())
 }
 
 async fn handle_subscription_message(
@@ -183,7 +186,7 @@ async fn handle_client_message(
                 socket.send(resp).await?;
                 return Ok(());
             };
-            let resp = server_message(SM::MarketData(market.into()));
+            let resp = server_message(SM::MarketCreated(market.into()));
             subscriptions.send_market_data(resp);
         }
         CM::SettleMarket(settle_market) => {

@@ -15,14 +15,15 @@ message ServerMessage {
   oneof message {
     Portfolio portfolio = 1;
     Market market_data = 2;
-    MarketSettled market_settled = 3;
-    OrderCreated order_created = 4;
-    OrderCancelled order_cancelled = 5;
-    Payments payments = 6;
-    Payment payment_created = 7;
-    Out out = 8;
-    Authenticated authenticated = 9;
-    RequestFailed request_failed = 10;
+    Market market_created = 3;
+    MarketSettled market_settled = 4;
+    OrderCreated order_created = 5;
+    OrderCancelled order_cancelled = 6;
+    Payments payments = 7;
+    Payment payment_created = 8;
+    Out out = 9;
+    Authenticated authenticated = 10;
+    RequestFailed request_failed = 11;
   }
 }
 message Authenticated {}
