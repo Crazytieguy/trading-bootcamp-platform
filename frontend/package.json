@@ -45,6 +45,7 @@
 		"lucide-svelte": "^0.396.0",
 		"mode-watcher": "^0.3.1",
 		"schema-js": "workspace:*",
+		"svelte-sonner": "^0.3.27",
 		"sveltekit-superforms": "^2.16.0",
 		"tailwind-merge": "^2.3.0",
 		"tailwind-variants": "^0.2.1"
