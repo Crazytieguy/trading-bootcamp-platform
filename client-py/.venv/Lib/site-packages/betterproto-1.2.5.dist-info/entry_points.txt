@@ -1,0 +1,2 @@
+[console_scripts]
+protoc-gen-python_betterproto = betterproto.plugin:main
