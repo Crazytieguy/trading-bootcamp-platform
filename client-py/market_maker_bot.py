@@ -105,8 +105,8 @@ async def market_maker_bot(
             create_order = ClientMessage(
                 create_order=CreateOrder(
                     market_id=market_id,
-                    price=str(bid_price),
-                    size=str(size),
+                    price=float(bid_price),
+                    size=float(size),
                     side=Side.BID,
                 )
             )
@@ -118,8 +118,8 @@ async def market_maker_bot(
             create_order = ClientMessage(
                 create_order=CreateOrder(
                     market_id=market_id,
-                    price=str(offer_price),
-                    size=str(size),
+                    price=float(offer_price),
+                    size=float(size),
                     side=Side.OFFER,
                 )
             )

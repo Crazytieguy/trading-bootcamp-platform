@@ -53,15 +53,15 @@ async def naive_bot(
         size = min(available_size, desired_size)
         size_str = str(size.quantize(Decimal("0.01")))
 
-        create_order = CreateOrder(market_id=market_id, size=size_str)
+        create_order = CreateOrder(market_id=market_id, size=float(size_str))
 
         if random.random() < 0.5:
             create_order.side = Side.BID
-            create_order.price = best_offer.price
+            create_order.price = float(best_offer.price)
             side_str = "BID"
         else:
             create_order.side = Side.OFFER
-            create_order.price = best_bid.price
+            create_order.price = float(best_bid.price)
             side_str = "OFFER"
 
         logger.info(
