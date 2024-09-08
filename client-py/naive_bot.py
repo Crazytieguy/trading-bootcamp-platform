@@ -86,10 +86,18 @@ def naive_bot(
     client.out(market_id)
 
     def trade():
-        market = client.state().markets.get(market_id)
+        state = client.state()
+        market = state.markets.get(market_id)
         if not market or not market.orders:
             logger.info(f"No market data available for market {market_id}")
             return
+        
+        positions = [x for x in state.portfolio.market_exposures if x.market_id == market.id]
+        if len(positions) > 0:
+            position = positions[0].position
+        else:
+            position = 0
+        logger.info(f"My position is {position}")
 
         bids = [order for order in market.orders if order.side == Side.BID]
         offers = [order for order in market.orders if order.side == Side.OFFER]
@@ -112,13 +120,24 @@ def naive_bot(
             size = min(available_size, desired_size)
         else:
             size = max_size
-
+        
         if random.random() < 0.5:
             side = Side.BID
             price = min(market.max_settlement, best_offer.price + trade_offset)
         else:
             side = Side.OFFER
             price = max(market.min_settlement, best_bid.price - trade_offset)
+
+        if position > 0 and side == Side.BID:
+            size *= 0.9
+        elif position > 0 and side == Side.OFFER:
+            size *= 1
+        elif position < 0 and side == Side.BID:
+            size *= 1
+        elif position < 0 and side == Side.OFFER:
+            size *= 0.9
+
+        
 
         logger.info(
             f"Market {market_id}: Placing {side.name} order, spread {spread}, size {size}, price {price}"

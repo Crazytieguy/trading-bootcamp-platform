@@ -121,17 +121,17 @@ def market_maker_bot(
         our_best_bid = max(our_bids + [market.min_settlement])
         our_best_offer = min(our_offers + [market.max_settlement])
 
-        fair_price = prior - round(current_position / size) * fade_per_order
+        fair_price = prior - round(current_position / (size*2)) * fade_per_order*2
         if last_fair is None:
             last_fair = fair_price
         d_price = fair_price - last_fair
         d_cts = d_price / fade
         if last_fair > fair_price:
             logger.info(f"Fair decreased by {-d_price}!")
-            temp_fade_buy += temp_fade*-d_cts
+            temp_fade_buy += temp_fade*-(d_cts+0.5)
         elif last_fair < fair_price:
             logger.info(f"Fair increased by {d_price}!")
-            temp_fade_sell += temp_fade*d_cts
+            temp_fade_sell += temp_fade*(d_cts+0.5)
         last_fair = fair_price
         logger.info(f"Current fair: {fair_price}")
 
@@ -153,12 +153,12 @@ def market_maker_bot(
             continue
 
         desired_bid_prices = [
-            clamp((fair_price - i * fade_per_order - spread / 2))
+            clamp((fair_price - i * fade_per_order * 2 - spread / 2))
             for i in range(depth)
             if i*fade_per_order >= temp_fade_buy or i == depth-1
         ]
         desired_offer_prices = [
-            clamp((fair_price + i * fade_per_order + spread / 2))
+            clamp((fair_price + i * fade_per_order * 2 + spread / 2))
             for i in range(depth)
             if i*fade_per_order >= temp_fade_sell or i == depth-1
         ]
