@@ -27,8 +27,9 @@ def main(
     seconds_per_trade: float = 1.0,
     trades_per_chance: int = 1,
     loss_falloff: float = 1.0,
-    always_trade_in_full: bool = False,
-    trade_offset: float = 0.0
+    always_try_max_size: bool = False,
+    trade_offset: float = 0.0,
+    stay_neutral: bool = True
 ):
     """
     Note: If use_loss_falloff is wrong, the desired size function is changed such that the effective loss may be completely different from loss_per_trade.
@@ -45,8 +46,9 @@ def main(
             seconds_per_trade=seconds_per_trade,
             trades_per_chance=trades_per_chance,
             loss_falloff=loss_falloff,
-            always_trade_in_full=always_trade_in_full,
-            trade_offset=trade_offset
+            always_try_max_size=always_try_max_size,
+            trade_offset=trade_offset,
+            stay_neutral=stay_neutral
         )
 
 #@app.command()
@@ -80,8 +82,9 @@ def naive_bot(
     seconds_per_trade: float,
     trades_per_chance: int,
     loss_falloff: float,
-    always_trade_in_full: bool,
-    trade_offset: float
+    always_try_max_size: bool,
+    trade_offset: float,
+    stay_neutral: bool
 ):
     client.out(market_id)
 
@@ -114,12 +117,12 @@ def naive_bot(
         best_offer = min(offers, key=lambda x: x.price)
         spread = best_offer.price - best_bid.price
 
-        if not always_trade_in_full:
+        if always_try_max_size:
+            size = min(best_bid.size, best_offer.size, max_size)
+        else:
             available_size = min(best_bid.size, best_offer.size)
             desired_size = min(loss_per_trade * 2 / math.pow(spread, loss_falloff), max_size)
             size = min(available_size, desired_size)
-        else:
-            size = max_size
         
         if random.random() < 0.5:
             side = Side.BID
@@ -127,15 +130,15 @@ def naive_bot(
         else:
             side = Side.OFFER
             price = max(market.min_settlement, best_bid.price - trade_offset)
-
-        if position > 0 and side == Side.BID:
-            size *= 0.9
-        elif position > 0 and side == Side.OFFER:
-            size *= 1
-        elif position < 0 and side == Side.BID:
-            size *= 1
-        elif position < 0 and side == Side.OFFER:
-            size *= 0.9
+        if stay_neutral:
+            if position > 0 and side == Side.BID:
+                size *= 0.75
+            elif position > 0 and side == Side.OFFER:
+                size *= 1
+            elif position < 0 and side == Side.BID:
+                size *= 1
+            elif position < 0 and side == Side.OFFER:
+                size *= 0.75
 
         
 
@@ -151,7 +154,7 @@ def naive_bot(
         )
         client.out(market_id)
 
-
+    print("Starting main loop...")
     while True:
         sleep(1)
         if random.random() >= (1 / seconds_per_trade):

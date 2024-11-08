@@ -1,11 +1,12 @@
 import logging
 import math
 from time import sleep
+import traceback
 from typing import Optional
 
 import typer
 from dotenv import load_dotenv
-from trading_client import TradingClient
+from trading_client import RequestFailed, TradingClient
 from typing_extensions import Annotated
 from websocket_api import ClientMessage, CreateOrder, CancelOrder, Side
 
@@ -121,7 +122,7 @@ def market_maker_bot(
         our_best_bid = max(our_bids + [market.min_settlement])
         our_best_offer = min(our_offers + [market.max_settlement])
 
-        fair_price = prior - round(current_position / (size*2)) * fade_per_order*2
+        fair_price = prior - round(current_position / (size)) * fade_per_order
         if last_fair is None:
             last_fair = fair_price
         d_price = fair_price - last_fair
@@ -153,12 +154,12 @@ def market_maker_bot(
             continue
 
         desired_bid_prices = [
-            clamp((fair_price - i * fade_per_order * 2 - spread / 2))
+            clamp((fair_price - i * fade_per_order - spread / 2))
             for i in range(depth)
             if i*fade_per_order >= temp_fade_buy or i == depth-1
         ]
         desired_offer_prices = [
-            clamp((fair_price + i * fade_per_order * 2 + spread / 2))
+            clamp((fair_price + i * fade_per_order + spread / 2))
             for i in range(depth)
             if i*fade_per_order >= temp_fade_sell or i == depth-1
         ]
@@ -211,8 +212,11 @@ def market_maker_bot(
         ]
         logger.info(f"Placing {len(bids)} bids, {len(offers)} offers, and {len(cancels)} cancels")
         if len(bids+offers+cancels) > 0:
-            client.request_many(bids + offers + cancels)
-
+            try:
+                client.request_many(bids + offers + cancels)
+            except RequestFailed:
+                traceback.print_exc()
+                print("Continuing...")
 
 if __name__ == "__main__":
     app()

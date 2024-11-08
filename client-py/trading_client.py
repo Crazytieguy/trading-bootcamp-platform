@@ -138,6 +138,8 @@ class TradingClient:
             if server_message.request_id == message.request_id:
                 _, message = betterproto.which_one_of(server_message, "message")
                 if isinstance(message, websocket_api.RequestFailed):
+                    if message.request_details.kind == "CancelOrder":
+                        logger.error(f"CancelOrder failed:")
                     raise RequestFailed(
                         f"{message.request_details.kind} request failed: {message.error_details.message}"
                     )

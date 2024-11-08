@@ -2,3 +2,5 @@ betterproto[compiler]
 websockets
 typer
 python-dotenv
+gspread
+oauth2client
