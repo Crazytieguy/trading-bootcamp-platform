@@ -771,5 +771,5 @@ while True:
 
     # Update the sheet: clear and write the data
     for sheet in sheets.values():
-        sheet.update('A1', data)
+        sheet.update(data, 'A1')
 
