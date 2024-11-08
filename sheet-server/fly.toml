@@ -1,0 +1,28 @@
+# fly.toml app configuration file generated for trading-bootcamp on 2024-07-21T19:29:56-07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'trading-bootcamp'
+primary_region = 'sjc'
+
+[build]
+
+[env]
+
+[http_service]
+internal_port = 8080
+force_https = true
+auto_stop_machines = "stop"
+auto_start_machines = true
+min_machines_running = 0
+processes = ['app']
+
+[[vm]]
+memory = '1GB'
+cpu_kind = 'shared'
+cpus = 4
+
+[mounts]
+source = "trading_bootcamp"
+destination = "/data"
