@@ -619,11 +619,7 @@ from datetime import datetime
 
 # Use creds to create a client to interact with the Google Sheets API
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-creds = ServiceAccountCredentials.from_json_keyfile_name('client_secret.json', scope)
-client_gs = gspread.authorize(creds)
 
-# Open the Google Sheet (replace 'Your Spreadsheet Name' with your actual spreadsheet name)
-sheet = client_gs.open("Market Data Sheet").sheet1  # Assuming you have access to the first worksheet
 
 # Check if the sheet is empty and write headers if needed
 #if len(sheet.get_all_records()) == 0:
@@ -631,32 +627,149 @@ sheet = client_gs.open("Market Data Sheet").sheet1  # Assuming you have access t
 #    headers = ["Timestamp"] + [name for name in ids_to_names.values()]
 #    sheet.append_row(headers)
 
-the_ids_in_question = [2,3,4]
+the_ids_in_question = [3,4,5]
+the_sheet_names_in_question = ["Team 1 Market Data", "Team 2 Market Data", "Team 3 Market Data", "Team 4 Market Data"]
+the_service_accounts_in_question = ["gsheets_a.json", "gsheets_b.json", "gsheets_c.json", "gsheets_d.json", "gsheets_e.json"]
+max_writes_per_service_account = 1
+if len(the_service_accounts_in_question) > len(the_sheet_names_in_question):
+    print(f"WARNING: More service accounts than sheet names! Not using {len(the_service_accounts_in_question) - len(the_sheet_names_in_question)} service accounts.")
+    the_service_accounts_in_question = the_service_accounts_in_question[:len(the_sheet_names_in_question)]
+elif len(the_sheet_names_in_question) > len(the_service_accounts_in_question):
+    max_writes_per_service_account = math.ceil(len(the_sheet_names_in_question) / len(the_service_accounts_in_question))
+    print(f"WARNING: More sheet names than service accounts! Now doing maximum of {max_writes_per_service_account} writes per service account.")
+    the_service_accounts_in_question = (the_service_accounts_in_question * max_writes_per_service_account)[:len(the_sheet_names_in_question)]
+sleep_time = max_writes_per_service_account * 1.01
+print(f"Sleeping for {sleep_time} seconds between writes.")
+assert len(the_sheet_names_in_question) == len(the_service_accounts_in_question)
+
+
+gs_clients = [gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(file, scope)) for file in the_service_accounts_in_question]
+sheets = {name: gs_client.open(name).sheet1 for name, gs_client in zip(the_sheet_names_in_question, gs_clients)}
+
 
 while True:
-    sleep(1.0)  # Sleep 1 second between updates
+    sleep(sleep_time)
 
     state = client.state()
     markets = {}
-    for id in the_ids_in_question:
-        markets[name] = state.markets.get(id)
+    for i in the_ids_in_question:
+        markets[i] = state.markets.get(i)
 
-    total_clips_exchanged_per_market = {}
-    for name, market in markets.items():
-        total_clips_exchanged = 0
-        for trade in market.trades:
-            total_clips_exchanged += trade.price * trade.size
-        total_clips_exchanged_per_market[name] = total_clips_exchanged
-
-    # Prepare data to be updated
+    # Get current timestamp
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Create a list containing the timestamp and total clips for each market
-    row = [timestamp]
-    for market_name in ids_to_names.values():
-        total_clips = total_clips_exchanged_per_market.get(market_name, 0)
-        row.append(total_clips)
+    # Prepare data per market
+    markets_data = {}
+    for i, market in markets.items():
+        trade_rows = []
+        bids = []
+        offers = []
+        user_ids = set()
 
-    # Update the cells in the second row (assuming headers are in the first row)
-    sheet.update('A2', [row])
+        # Process trades
+        for trade in market.trades:
+            price = trade.price
+            size = trade.size
+            buyer_id = trade.buyer_id
+            seller_id = trade.seller_id
+            trade_rows.append([price, size, buyer_id, seller_id])
+            user_ids.update([buyer_id, seller_id])
+
+        # Process orders (order book)
+        for order in market.orders:
+            price = order.price
+            size = order.size
+            owner_id = order.owner_id
+            if order.side == Side.BID:
+                bids.append([price, size, owner_id])
+            else:
+                offers.append([price, size, owner_id])
+            user_ids.add(owner_id)
+
+        # Get user names from ids
+        user_names = {}
+        for user_id in user_ids:
+            user = next((u for u in state.users if u.id == user_id), None)
+            user_names[user_id] = user.name if user else f"Unknown_{user_id}"
+
+        # Replace ids in trade rows with names
+        for row in trade_rows:
+            row[2] = user_names.get(row[2], "Unknown")  # buyer name
+            row[3] = user_names.get(row[3], "Unknown")  # seller name
+
+        # Replace ids in bid/offer rows with names
+        for row in bids:
+            row[2] = user_names.get(row[2], "Unknown")  # owner name
+        for row in offers:
+            row[2] = user_names.get(row[2], "Unknown")  # owner name
+
+        # Sort bids and offers
+        bids.sort(key=lambda x: x[0], reverse=True)  # Highest price first
+        offers.sort(key=lambda x: x[0])  # Lowest price first
+
+        markets_data[i] = {
+            'market_name': market.name,
+            'trade_rows': trade_rows,
+            'bids': bids,
+            'offers': offers
+        }
+
+    # Find maximum number of trades and orders across all markets
+    max_trades = max(len(market_data['trade_rows']) for market_data in markets_data.values())
+    max_bids = max(len(market_data['bids']) for market_data in markets_data.values())
+    max_offers = max(len(market_data['offers']) for market_data in markets_data.values())
+
+    # Prepare data for sheet
+    data = []
+    data.append([timestamp])  # First row with timestamp
+
+    # Prepare market names
+    row_market_names = ['']
+    for market_data in markets_data.values():
+        row_market_names.extend([market_data['market_name']] + [''] * 9)  # 10 columns per market
+    data.append(row_market_names)
+
+    # Prepare section labels
+    row_sections = ['']
+    for _ in markets_data.values():
+        row_sections.extend(['Trade Log', '', '', '', 'Bids', '', '', 'Offers', '', ''])
+    data.append(row_sections)
+
+    # Prepare headers
+    row_headers = ['']
+    for _ in markets_data.values():
+        row_headers.extend(['Trade Price', 'Trade Size', 'Buyer Name', 'Seller Name', 
+                          'Bid Price', 'Bid Size', 'Bid Owner', 'Offer Price', 'Offer Size', 'Offer Owner'])
+    data.append(row_headers)
+
+    # Prepare data rows
+    max_rows = max(max_trades, max_bids, max_offers)
+    for row_idx in range(max_rows):
+        row = ['']
+        for market_data in markets_data.values():
+            # Trades data
+            if row_idx < len(market_data['trade_rows']):
+                trade_row = market_data['trade_rows'][row_idx]
+                row.extend(trade_row)
+            else:
+                row.extend(['', '', '', ''])
+
+            # Bids data
+            if row_idx < len(market_data['bids']):
+                bid_row = market_data['bids'][row_idx]
+                row.extend(bid_row)
+            else:
+                row.extend(['', '', ''])
+
+            # Offers data
+            if row_idx < len(market_data['offers']):
+                offer_row = market_data['offers'][row_idx]
+                row.extend(offer_row)
+            else:
+                row.extend(['', '', ''])
+        data.append(row)
+
+    # Update the sheet: clear and write the data
+    for sheet in sheets.values():
+        sheet.update('A1', data)
 
