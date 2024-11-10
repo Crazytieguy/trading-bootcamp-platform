@@ -1,8 +1,16 @@
 trap 'kill $(jobs -p); exit' INT
+
+# Reset logs directory
+rm -rf logs
+mkdir -p logs
+
+counter=1
 while read cmd; do
     if [ -z "$cmd" ]; then
         continue
     fi
-    eval "$cmd" &
+    bash -c "$cmd" > NUL &
+    counter=$((counter + 1))
+    sleep 0.5 # Sleep for 500ms between starts
 done < to_run.txt
 wait
