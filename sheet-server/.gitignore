@@ -1,0 +1,7 @@
+.env
+__pycache__
+.python-version
+.venv
+client_secret.json
+gsheets_*.json
+*.txt

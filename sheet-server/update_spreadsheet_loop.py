@@ -2,6 +2,7 @@
 # betterproto[compiler]
 # websockets
 
+import math
 from time import sleep
 import logging
 import uuid
@@ -615,7 +616,7 @@ client = TradingClient(api_url, jwt, act_as)
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Use creds to create a client to interact with the Google Sheets API
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -627,8 +628,9 @@ scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/au
 #    headers = ["Timestamp"] + [name for name in ids_to_names.values()]
 #    sheet.append_row(headers)
 
-the_ids_in_question = [3,4,5]
-the_sheet_names_in_question = ["Team 1 Market Data", "Team 2 Market Data", "Team 3 Market Data", "Team 4 Market Data"]
+ids_txt = open("ids.txt", "r").read()
+the_ids_in_question = [int(id) for id in ids_txt.split(",")]
+the_sheet_names_in_question = ["Market Data Sheet David"]
 the_service_accounts_in_question = ["gsheets_a.json", "gsheets_b.json", "gsheets_c.json", "gsheets_d.json", "gsheets_e.json"]
 max_writes_per_service_account = 1
 if len(the_service_accounts_in_question) > len(the_sheet_names_in_question):
@@ -644,19 +646,42 @@ assert len(the_sheet_names_in_question) == len(the_service_accounts_in_question)
 
 
 gs_clients = [gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(file, scope)) for file in the_service_accounts_in_question]
+
 sheets = {name: gs_client.open(name).sheet1 for name, gs_client in zip(the_sheet_names_in_question, gs_clients)}
 
+print("Clearing all sheets...")
+for sheet in sheets.values():
+    sheet.clear()
+
+print("Done.")
+
+last_reopen = datetime.now()
+
+prev_data_row_count = 0  # Initialize previous data row count
 
 while True:
     sleep(sleep_time)
+    print("Getting next state...")
+
+    if datetime.now() - last_reopen > timedelta(minutes=5):
+        print("Reopening all sheets...")
+        last_reopen = datetime.now()
+        gs_clients = [gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(file, scope)) for file in the_service_accounts_in_question]
+        sheets = {name: gs_client.open(name).sheet1 for name, gs_client in zip(the_sheet_names_in_question, gs_clients)}
+        print("Sending dummy ping...")
+        client.send(ClientMessage(out=Out(market_id=3)))
+        print("Done.")
 
     state = client.state()
     markets = {}
     for i in the_ids_in_question:
         markets[i] = state.markets.get(i)
 
+
     # Get current timestamp
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    print(f"Updating {', '.join([markets[i].name for i in the_ids_in_question])} at {timestamp}.")
 
     # Prepare data per market
     markets_data = {}
@@ -769,7 +794,32 @@ while True:
                 row.extend(['', '', ''])
         data.append(row)
 
-    # Update the sheet: clear and write the data
+    # Update the sheet without clearing it entirely
     for sheet in sheets.values():
-        sheet.update(data, 'A1')
+        # Update data starting from 'A1'
+        sheet.update('A1', data)
+
+        # If previous data had more rows, clear the extra rows
+        new_data_row_count = len(data)
+        new_data_column_count = len(data[0])
+
+        if prev_data_row_count > new_data_row_count:
+            start_row = new_data_row_count + 1
+            end_row = prev_data_row_count
+            num_columns = new_data_column_count
+
+            # Function to convert column number to letters (e.g., 1 -> 'A', 27 -> 'AA')
+            def colnum_to_letters(n):
+                result = ''
+                while n > 0:
+                    n, remainder = divmod(n - 1, 26)
+                    result = chr(65 + remainder) + result
+                return result
+
+            end_column = colnum_to_letters(num_columns)
+            clear_range = f'A{start_row}:{end_column}{end_row}'
+            sheet.batch_clear([clear_range])
+
+        # Update prev_data_row_count
+        prev_data_row_count = new_data_row_count
 
