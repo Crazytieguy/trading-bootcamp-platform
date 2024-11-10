@@ -5,7 +5,11 @@ import { toast } from 'svelte-sonner';
 import { kinde } from './auth.svelte';
 import { notifyUser } from './notifications';
 
-export const redeemables = [];
+export const redeemables = [
+	[101, 102],
+	[101, 103],
+	[101, 104]
+];
 
 const socket = new ReconnectingWebSocket(PUBLIC_SERVER_URL);
 socket.binaryType = 'arraybuffer';
