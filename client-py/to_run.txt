@@ -1,0 +1,12 @@
+python market_maker_bot.py 82 --act-as d6d3bf38-eeae-4544-87ed-b5a742bb3fc6 --spread 1 --size 2 --fade-per-order 0.5
+python market_maker_bot.py 83 --act-as d6d3bf38-eeae-4544-87ed-b5a742bb3fc6 --spread 1 --size 2 --fade-per-order 0.5
+python market_maker_bot.py 84 --act-as d6d3bf38-eeae-4544-87ed-b5a742bb3fc6 --spread 1 --size 2 --fade-per-order 0.5
+python market_maker_bot.py 85 --act-as d6d3bf38-eeae-4544-87ed-b5a742bb3fc6 --spread 1 --size 2 --fade-per-order 0.5
+python market_maker_bot.py 86 --act-as d6d3bf38-eeae-4544-87ed-b5a742bb3fc6 --spread 2 --size 1 --fade-per-order 1
+python market_maker_bot.py 87 --act-as d6d3bf38-eeae-4544-87ed-b5a742bb3fc6 --spread 1 --size 2 --fade-per-order 0.5
+python naive_bot.py 82 --act-as cdadf49e-dac2-4f31-bc40-c5f3e9fc93c7 --max-size 5 --always-trade-max --trade-offset 2 --stay-neutral --seconds-per-trade 60
+python naive_bot.py 83 --act-as cdadf49e-dac2-4f31-bc40-c5f3e9fc93c7 --max-size 5 --always-trade-max --trade-offset 2 --stay-neutral --seconds-per-trade 60
+python naive_bot.py 84 --act-as cdadf49e-dac2-4f31-bc40-c5f3e9fc93c7 --max-size 5 --always-trade-max --trade-offset 2 --stay-neutral --seconds-per-trade 60
+python naive_bot.py 85 --act-as cdadf49e-dac2-4f31-bc40-c5f3e9fc93c7 --max-size 5 --always-trade-max --trade-offset 2 --stay-neutral --seconds-per-trade 60
+python naive_bot.py 86 --act-as cdadf49e-dac2-4f31-bc40-c5f3e9fc93c7 --max-size 5 --always-trade-max --trade-offset 4 --stay-neutral --seconds-per-trade 60
+python naive_bot.py 87 --act-as cdadf49e-dac2-4f31-bc40-c5f3e9fc93c7 --max-size 5 --always-trade-max --trade-offset 2 --stay-neutral --seconds-per-trade 60

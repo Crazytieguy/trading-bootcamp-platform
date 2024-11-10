@@ -2,6 +2,7 @@ import logging
 import random
 from time import sleep
 import math
+from typing import Optional
 
 import typer
 from dotenv import load_dotenv
@@ -22,12 +23,12 @@ def main(
     api_url: Annotated[str, typer.Option(envvar="API_URL")],
     act_as: Annotated[str, typer.Option(envvar="ACT_AS")],
     market_id: int,
-    loss_per_trade: float = 1.0,
+    max_loss_per_trade: Optional[float] = None,
     max_size: float = 1.0,
     seconds_per_trade: float = 1.0,
     trades_per_chance: int = 1,
     loss_falloff: float = 1.0,
-    always_try_max_size: bool = False,
+    always_trade_max: bool = False,
     trade_offset: float = 0.0,
     stay_neutral: bool = True
 ):
@@ -41,12 +42,12 @@ def main(
         naive_bot(
             client,
             market_id=market_id,
-            loss_per_trade=loss_per_trade,
+            max_loss_per_trade=max_loss_per_trade,
             max_size=max_size,
             seconds_per_trade=seconds_per_trade,
             trades_per_chance=trades_per_chance,
             loss_falloff=loss_falloff,
-            always_try_max_size=always_try_max_size,
+            always_trade_max=always_trade_max,
             trade_offset=trade_offset,
             stay_neutral=stay_neutral
         )
@@ -77,12 +78,12 @@ def naive_bot(
     client: TradingClient,
     *,
     market_id: int,
-    loss_per_trade: float,
+    max_loss_per_trade: Optional[float],
     max_size: float,
     seconds_per_trade: float,
     trades_per_chance: int,
     loss_falloff: float,
-    always_try_max_size: bool,
+    always_trade_max: bool,
     trade_offset: float,
     stay_neutral: bool
 ):
@@ -117,12 +118,14 @@ def naive_bot(
         best_offer = min(offers, key=lambda x: x.price)
         spread = best_offer.price - best_bid.price
 
-        if always_try_max_size:
-            size = min(best_bid.size, best_offer.size, max_size)
-        else:
+        if always_trade_max:
+            size = max_size
+        elif max_loss_per_trade is not None:
             available_size = min(best_bid.size, best_offer.size)
-            desired_size = min(loss_per_trade * 2 / math.pow(spread, loss_falloff), max_size)
+            desired_size = min(max_loss_per_trade * 2 / math.pow(spread, loss_falloff), max_size)
             size = min(available_size, desired_size)
+        else:
+            size = min(best_bid.size, best_offer.size, max_size)
         
         if random.random() < 0.5:
             side = Side.BID

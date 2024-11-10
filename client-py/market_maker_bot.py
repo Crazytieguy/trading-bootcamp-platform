@@ -27,6 +27,7 @@ def main(
     size: float = 1.0,
     fade_per_order: Optional[float] = None,
     fade: Optional[float] = None,
+    depth_fade_per_order: Optional[float] = None,
     temp_fade: float = 0,
     temp_fade_half_life: float = 10,
     depth: int = 5,
@@ -44,6 +45,7 @@ def main(
             spread=spread,
             size=size,
             fade_per_order=fade_per_order,
+            depth_fade_per_order=depth_fade_per_order,
             temp_fade=temp_fade,
             temp_fade_half_life=temp_fade_half_life,
             depth=depth,
@@ -58,12 +60,15 @@ def market_maker_bot(
     spread: float,
     size: float,
     fade_per_order: float,
+    depth_fade_per_order: Optional[float],
     temp_fade: float,
     temp_fade_half_life: float,
     depth: int,
     prior: Optional[float] = None,
 ) -> None:
     fade = fade_per_order / size
+    if depth_fade_per_order is None:
+        depth_fade_per_order = fade_per_order
     
     def clamp(value: float):
             assert market is not None
@@ -84,7 +89,7 @@ def market_maker_bot(
     temp_fade_decay_per_second = math.pow(0.5, 1/temp_fade_half_life)
     logger.info(f"Temp fade is being multiplied by {temp_fade_decay_per_second} every second")
 
-    last_fair = None
+    last_position = None
 
     while True:
         sleep(1)
@@ -122,18 +127,22 @@ def market_maker_bot(
         our_best_bid = max(our_bids + [market.min_settlement])
         our_best_offer = min(our_offers + [market.max_settlement])
 
-        fair_price = prior - round(current_position / (size)) * fade_per_order
-        if last_fair is None:
-            last_fair = fair_price
-        d_price = fair_price - last_fair
-        d_cts = d_price / fade
-        if last_fair > fair_price:
-            logger.info(f"Fair decreased by {-d_price}!")
-            temp_fade_buy += temp_fade*-(d_cts+0.5)
-        elif last_fair < fair_price:
-            logger.info(f"Fair increased by {d_price}!")
-            temp_fade_sell += temp_fade*(d_cts+0.5)
-        last_fair = fair_price
+        # current_position = -0.1
+        # size = 0.1
+        # depth_fade_per_order = 0.5
+        # fade_per_order = 0.05
+        print(f"Current position per size: {round(current_position / (size))}")
+        fair_price = prior - round(current_position / (size * (depth_fade_per_order/fade_per_order))) * depth_fade_per_order
+        if last_position is None:
+            last_position = current_position
+        d_position = current_position - last_position
+        if last_position > current_position:
+            logger.info(f"Sold {-d_position}!")
+            temp_fade_sell += temp_fade * -(d_position/size*depth_fade_per_order)
+        elif last_position < current_position:
+            logger.info(f"Bought {d_position}!")
+            temp_fade_buy += temp_fade * (d_position/size*depth_fade_per_order)
+        last_position = current_position
         logger.info(f"Current fair: {fair_price}")
 
 
@@ -150,18 +159,18 @@ def market_maker_bot(
         our_desired_best_offer = clamp(fair_price + spread / 2 + temp_fade_sell)
         
         logger.info(f"Current spread: {our_best_bid}@{our_best_offer} Goal spread: {our_desired_best_bid}@{our_desired_best_offer}")
-        if our_best_bid == our_desired_best_bid and our_best_offer == our_desired_best_offer:
-            continue
+        #if our_best_bid == our_desired_best_bid and our_best_offer == our_desired_best_offer:
+        #    continue
 
         desired_bid_prices = [
-            clamp((fair_price - i * fade_per_order - spread / 2))
+            clamp((fair_price - i * depth_fade_per_order - spread / 2))
             for i in range(depth)
-            if i*fade_per_order >= temp_fade_buy or i == depth-1
+            if i*depth_fade_per_order >= temp_fade_buy or i == depth-1
         ]
         desired_offer_prices = [
-            clamp((fair_price + i * fade_per_order + spread / 2))
+            clamp((fair_price + i * depth_fade_per_order + spread / 2))
             for i in range(depth)
-            if i*fade_per_order >= temp_fade_sell or i == depth-1
+            if i*depth_fade_per_order >= temp_fade_sell or i == depth-1
         ]
 
         new_bid_prices = [

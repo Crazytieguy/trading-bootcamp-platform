@@ -4,3 +4,5 @@ __pycache__
 .venv
 client_secret.json
 gsheets_*.json
+*.txt
+*.csv

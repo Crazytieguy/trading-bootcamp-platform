@@ -1,0 +1,8 @@
+trap 'kill $(jobs -p); exit' INT
+while read cmd; do
+    if [ -z "$cmd" ]; then
+        continue
+    fi
+    eval "$cmd" &
+done < to_run.txt
+wait
