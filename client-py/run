@@ -11,6 +11,6 @@ while read cmd; do
     fi
     bash -c "$cmd" > NUL &
     counter=$((counter + 1))
-    sleep 0.5 # Sleep for 500ms between starts
+    sleep 1 # Sleep for 1000ms between starts
 done < to_run.txt
 wait

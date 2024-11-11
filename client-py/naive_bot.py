@@ -135,13 +135,13 @@ def naive_bot(
             price = max(market.min_settlement, best_bid.price - trade_offset)
         if stay_neutral:
             if position > 0 and side == Side.BID:
-                size *= 0.75
+                size *= 0.5
             elif position > 0 and side == Side.OFFER:
                 size *= 1
             elif position < 0 and side == Side.BID:
                 size *= 1
             elif position < 0 and side == Side.OFFER:
-                size *= 0.75
+                size *= 0.5
 
         
 

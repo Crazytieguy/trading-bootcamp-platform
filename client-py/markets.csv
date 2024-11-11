@@ -1,29 +1,20 @@
 name,description,min_settlement,max_settlement
-a_123_test,,3,60
-a_456_test,,3,60
-a_789_test,,3,60
-b_123_test,,3,60
-b_456_test,,3,60
-b_789_test,,3,60
-c_123_test,,3,60
-c_456_test,,3,60
-c_789_test,,3,60
-d_123_test,,3,60
-d_456_test,,3,60
-d_789_test,,3,60
-sum_123_test,,12,240
-sum_456_test,,12,240
-sum_789_test,,12,240
-diff_ad_123_test,,3,60
-diff_ad_456_test,,3,60
-diff_ad_789_test,,3,60
-stdev_123_test,,0,10
-stdev_456_test,,0,10
-stdev_789_test,,0,10
-a_full_test,,9,180
-b_full_test,,9,180
-c_full_test,,9,180
-d_full_test,,9,180
-sum_full_test,,27,540
-diff_full_test,,9,180
-stdev_full_test,,0,10
+tw_sum,Settles to the sum of all dice rolls.,36,720
+tw_diff,Settles to tw_a - tw_b,36,720
+tw_avg,Settles to the sum of {the average dice roll} in each round.,9,180
+tw_a,Settles to the sum of {the highest dice roll} in each round.,9,180
+tw_b,Settles to the sum of {the second-highest dice roll} in each round.,9,180
+tw_c,Settles to the sum of {the third-highest dice roll} in each round.,9,180
+tw_d,Settles to the sum of {the fourth-highest dice roll} in each round.,9,180
+tw_a_123,Settles to the sum of {the highest dice roll} in rounds 1-3.,3,60
+tw_a_456,Settles to the sum of {the highest dice roll} in rounds 4-6.,3,60
+tw_a_789,Settles to the sum of {the highest dice roll} in rounds 7-9.,3,60
+tw_b_123,Settles to the sum of {the second-highest dice roll} in rounds 1-3.,3,60
+tw_b_456,Settles to the sum of {the second-highest dice roll} in rounds 4-6.,3,60
+tw_b_789,Settles to the sum of {the second-highest dice roll} in rounds 7-9.,3,60
+tw_c_123,Settles to the sum of {the third-highest dice roll} in rounds 1-3.,3,60
+tw_c_456,Settles to the sum of {the third-highest dice roll} in rounds 4-6.,3,60
+tw_c_789,Settles to the sum of {the third-highest dice roll} in rounds 7-9.,3,60
+tw_d_123,Settles to the sum of {the fourth-highest dice roll} in rounds 1-3.,3,60
+tw_d_456,Settles to the sum of {the fourth-highest dice roll} in rounds 4-6.,3,60
+tw_d_789,Settles to the sum of {the fourth-highest dice roll} in rounds 7-9.,3,60
