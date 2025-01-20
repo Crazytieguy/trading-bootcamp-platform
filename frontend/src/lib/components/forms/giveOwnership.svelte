@@ -43,7 +43,7 @@
 </script>
 
 <form use:enhance class="grid grid-cols-[auto_auto] gap-4">
-	<Form.Button class="w-32">Give Ownership</Form.Button>
+	<Form.Button class="w-32">Share Ownership</Form.Button>
 	<Form.Field {form} name="ofBotId">
 		<Popover.Root bind:open={firstPopoverOpen}>
 			<Form.Control>
