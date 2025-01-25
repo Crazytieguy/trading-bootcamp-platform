@@ -84,6 +84,7 @@ export const accountName = (accountId: number | null | undefined, me: string = '
 		: `${prefix}${account?.name || 'Unnamed account'}`;
 };
 
+// FMV
 const allowedUsers = ['Atticus Yang', 'Verner Dsouza', 'Talya Klinger'];
 
 const authenticate = async () => {
