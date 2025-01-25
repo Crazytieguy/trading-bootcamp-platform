@@ -54,6 +54,30 @@
 	const lastPrice = $derived(trades[trades.length - 1]?.price || '');
 	const midPrice = $derived(getMidPrice(bids, offers));
 	const isRedeemable = $derived(marketDefinition.redeemableFor?.length);
+
+	const computePnL = (marketData: MarketData, userId: number, transactionId?: number): number => {
+		let pnl = 0;
+		const trades = transactionId
+			? tradesAtTransaction(marketData.trades, transactionId)
+			: marketData.trades;
+		const lastPrice = trades[trades.length - 1]?.price || 0;
+
+		for (const trade of trades) {
+			if (trade.buyerId === userId) {
+				const priceDifference = lastPrice - trade.price;
+				const tradePnL = priceDifference * trade.size;
+				pnl += tradePnL;
+			} else if (trade.sellerId === userId) {
+				const priceDifference = trade.price - lastPrice;
+				const tradePnL = priceDifference * trade.size;
+				pnl += tradePnL;
+			}
+		}
+
+		return pnl;
+	};
+
+	const pnl = $derived(computePnL(marketData, serverState.userId, displayTransactionId));
 </script>
 
 <div class="flex-grow py-8">
@@ -86,6 +110,7 @@
 							<Table.Head class="text-center">Last price</Table.Head>
 							<Table.Head class="text-center">Mid price</Table.Head>
 							<Table.Head class="text-center">Your Position</Table.Head>
+							<Table.Head class="text-center">PnL</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body class="text-center">
@@ -93,6 +118,7 @@
 							<Table.Cell class="pt-2">{lastPrice}</Table.Cell>
 							<Table.Cell class="pt-2">{midPrice}</Table.Cell>
 							<Table.Cell class="pt-2">{Number(position.toFixed(2))}</Table.Cell>
+							<Table.Cell class="pt-2">{Number(pnl.toFixed(2))}</Table.Cell>
 						</Table.Row>
 					</Table.Body>
 				</Table.Root>
@@ -103,7 +129,7 @@
 					displayTransactionId !== undefined && 'min-h-screen'
 				)}
 			>
-				<MarketTrades {trades} />
+				<MarketTrades {trades} lastPrice={Number(lastPrice)} />
 				<MarketOrders {bids} {offers} {displayTransactionId} />
 			</div>
 		</div>
