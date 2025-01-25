@@ -27,5 +27,6 @@
 		y="price"
 		yDomain={[minSettlement ?? 0, maxSettlement ?? 0]}
 		props={{ xAxis: { format: 15 }, yAxis: { grid: { class: 'stroke-surface-content/30' } } }}
+		points
 	/>
 </div>
