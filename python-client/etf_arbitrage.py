@@ -35,7 +35,7 @@ def main(
     jwt: Annotated[str, typer.Option(envvar="JWT")],
     api_url: Annotated[str, typer.Option(envvar="API_URL")],
     act_as: Annotated[int, typer.Option(envvar="ACT_AS")],
-    market_name: str,
+    # market_name: str,
     spread: float = 1.0,
     size: float = 1.0,
     fade_per_order: float = 1.0,
@@ -44,7 +44,7 @@ def main(
     with TradingClient(api_url, jwt, act_as) as client:
         arbitrage_etf_bot(
             client,
-            etf_name=market_name,
+            # etf_name=market_name,
             spread=spread,
             max_size=size,
             fade_per_order=fade_per_order,
@@ -197,7 +197,7 @@ def arbitrage_etf(
             client.out(market.id)
     else:
         print(
-            "No arbitrage opportunity\n",
+            bcolors.YELLOW + "No arbitrage opportunity\n" + bcolors.ENDC,
             f"ETF {etf_name} bid {etf_prices.bid}\n",
             f"ETF {etf_name} offer {etf_prices.offer}\n",
             *[
@@ -212,7 +212,7 @@ def arbitrage_etf(
 def arbitrage_etf_bot(
     client: TradingClient,
     *,
-    etf_name: str = "def_tradewars",
+    # etf_name: str = "def_tradewars",
     spread: float,
     max_size: float,
     fade_per_order: float,
@@ -242,22 +242,7 @@ def arbitrage_etf_bot(
             # if market is None:
             #     logger.info(f"No market data available for market {market_id}")
             #     continue
-
-    this_portfolio_dict = portfolios_dict[etf_name]
-    portfolio = [
-        PComponent.from_name(client, name=name, weight=weight)
-        for name, weight in this_portfolio_dict.items()
-    ]
-
-    while True:
-        sleep(1)
-        # state = client.state()
-        # market = state.markets.get(market_id)
-        # client.out(market_id)
-        # if market is None:
-        #     logger.info(f"No market data available for market {market_id}")
-        #     continue
-        arbitrage_etf(client, portfolio, etf_name, dry=dry, max_size=max_size)
+            arbitrage_etf(client, portfolio, etf_name, dry=dry, max_size=max_size)
 
 
 if __name__ == "__main__":
