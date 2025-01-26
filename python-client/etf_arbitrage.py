@@ -23,7 +23,7 @@ def main(
     act_as: Annotated[int, typer.Option(envvar="ACT_AS")],
     # market_name: str,
     spread: float = 1.0,
-    size: float = 1.0,
+    size: float = 0.1,
     fade_per_order: float = 1.0,
     prior: Optional[float] = None,
 ):
@@ -32,7 +32,7 @@ def main(
             client,
             # market_name=market_name,
             spread=spread,
-            size=size,
+            max_size=size,
             fade_per_order=fade_per_order,
             prior=prior,
             dry=False
@@ -52,7 +52,8 @@ class PComponent(BaseModel):
             name=name
         )
 
-def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:float=1.0, dry:bool=False):
+def arbitrage_etf(client, portfolio:list[MarketPrices], etf_name:str, 
+                 max_size:float=1.0, dry:bool=False):
 
     etf_prices = MarketPrices.from_client(client, etf_name)
 
@@ -70,8 +71,8 @@ def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:
         bids = []
         for market, prices in zip(portfolio, denovo_etf_components):
             market_id = market.id
-            price = prices.bid / market.weight
-            size = round(size / market.weight, 2)
+            price = prices.offer / market.weight
+            size = round(size * market.weight, 2)
             print(bcolors.OKGREEN + f"buy {market.name} at {price}  | size: {size}" + bcolors.ENDC)
             
             bid_ = ClientMessage(
@@ -94,7 +95,7 @@ def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:
                 )
             )]
         if not dry:
-            # import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()  
             if any((order.create_order.size <= 0 for order in bids + offers)):
                 print("Too small order size")
                 return
@@ -106,11 +107,11 @@ def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:
         # buy ETF and sell raw components
         size = min([max_size, denovo_etf_sum.bid_size, etf_prices.offer_size])
         # buy ETF
-        print(f"buy {etf_prices.name} at {etf_prices.offer}")
+        print(bcolors.OKGREEN +f"buy {etf_prices.name} at {etf_prices.offer}  | size: {size}" + bcolors.ENDC)
         bids = [ClientMessage(
                 create_order=CreateOrder(
                 market_id=etf_prices.id,
-                side=side.BID,
+                side=Side.BID,
                 size=size,
                 price=etf_prices.offer,
         ))]
@@ -118,9 +119,9 @@ def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:
         offers = []
         for market, prices in zip(portfolio, denovo_etf_components):
             market_id = market.id
-            price = prices.offer / market.weight
-            size = round(size / market.weight, 2)
-            print(f"sell {market.name} at {price}")
+            price = prices.bid / market.weight
+            size = round(size * market.weight, 2)
+            print(bcolors.RED + f"sell {market.name} at {price}  | size: {size}" + bcolors.ENDC)
             offer_ = ClientMessage(
                 create_order=CreateOrder(
                 market_id=market_id,
@@ -154,7 +155,7 @@ def arbitrage_etf_bot(
     *,
     etf_name: str = "def_tradewars",
     spread: float,
-    size: float,
+    max_size: float,
     fade_per_order: float,
     prior: Optional[float] = None,
     dry: bool = False,
@@ -181,7 +182,7 @@ def arbitrage_etf_bot(
         #     logger.info(f"No market data available for market {market_id}")
         #     continue
 
-        arbitrage_etf(client, portfolio, etf_name, dry=dry)
+        arbitrage_etf(client, portfolio, etf_name, max_size=max_size, dry=dry)
 
 if __name__ == "__main__":
     app()
