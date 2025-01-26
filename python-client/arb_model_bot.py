@@ -147,6 +147,8 @@ def get_market_data(state, market_id: str):
                 "market_name": market_name,
                 "latest_bid_price": latest_bid.price,
                 "latest_offer_price": latest_offer.price,
+                "latest_offer_size": latest_offer.size,
+                "latest_bid_size": latest_bid.size,
                 "spread": spread,
                 "bids": bids,
                 "offers": offers,
