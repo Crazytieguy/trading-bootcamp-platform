@@ -38,7 +38,9 @@ class SectorArbs:
 
 
 sector_market_ids = {
-    "abc": ["abc", "a", "b", "c"],
+    "abc": ["abc", "alpha", "bravo", "charlie"],
+    "def": ["def", "delta", "echo", "foxtrot"],
+    "ghi": ["ghi", "golf", "hotel", "india"],
 }
 
 sector_to_arbs = {
@@ -53,13 +55,13 @@ def main(
     jwt: Annotated[str, typer.Option(envvar="JWT")],
     api_url: Annotated[str, typer.Option(envvar="API_URL")],
     act_as: Annotated[int, typer.Option(envvar="ACT_AS")],
-    markets: list[str],
+    sectors: list[str],
     size: float = 100.0,
 ):
     with TradingClient(api_url, jwt, act_as) as client:
         arb_model_bot(
             client,
-            markets=markets,
+            sectors=sectors,
             size=size,
         )
 
@@ -67,15 +69,15 @@ def main(
 def arb_model_bot(
     client: TradingClient,
     *,
-    markets: list[str],
+    sectors: list[str],
     size: float,
 ):
     df = pd.DataFrame()
 
+    # sectors = ["abc", "def", "ghi"]
     # set up market feeds?
-    market_ids = [client.state().market_name_to_id[name] for name in markets]
-    sectors = ["abc", "def", "ghi"]
-
+    sector_ids = [client.state().market_name_to_id[name] for name in sectors]
+    
     while True:
         for sector in sectors: # should be sectors
             state = client.state()
@@ -93,14 +95,27 @@ def arb_model_bot(
 
 def get_market_data(state, market_id: str):
     df = pd.DataFrame()
+    
     # get orderbook
+    market_name = state.market_id_to_name[market_id]
     orders = state.markets[market_id].orders
-
+    
+    if not orders:
+        logger.info(f"No market data available for market {market_name}")
+    
     # get trades
+    bids = [order for order in orders if order.side == Side.BID]
+    offers = [order for order in orders if order.side == Side.OFFER]
 
-    # get market info
+    if not bids:
+        logger.info(f"No bids available for market {market_name}")
+            
+    if not offers:
+        logger.info(f"No offers available for market {market_name}")
 
-    # get user's orders
+    best_bid = max(bids, key=lambda x: x.price)
+    best_offer = min(offers, key=lambda x: x.price)
+    spread = best_offer.price - best_bid.price
 
     pass
 
