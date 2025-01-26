@@ -2,18 +2,25 @@ from metagame import TradingClient
 from pydantic import BaseModel, ConfigDict
 
 side_dict= {1:"bid", 2:"offer"}
+
 def get_prices(market):
     # highest bid
     try:
-        bid = max((order for order in market.orders if order.side==1), key=lambda x: -x.price).price
+        bid = max((order for order in market.orders if order.side==1), key=lambda x: -x.price)
+        bid_price = bid.price
+        bid_size = bid.size
     except IndexError:
-        bid = -float("inf")
+        bid_price = -float("inf")
+        bid_size = 0
     # lowest offer
     try:
-        offer = min((order for order in market.orders if order.side==2), key=lambda x: x.price).price
+        offer = min((order for order in market.orders if order.side==2), key=lambda x: x.price)
+        offer_price = offer.price
+        offer_size = offer.size
     except IndexError:
-        offer = float("inf")
-    return {"bid": bid, "offer": offer}
+        offer_price = float("inf")
+        offer_size = 0
+    return {"bid": bid_price, "offer": offer_price, "bid_size": bid_size, "offer_size": offer_size}
 
 
 def get_market_prices(client, /, market_name: str | None = None, market_id: int | None = None):
@@ -22,13 +29,15 @@ def get_market_prices(client, /, market_name: str | None = None, market_id: int 
         market_id = state.market_name_to_id.get(market_name)
     market = state.markets[market_id]
     return get_prices(market)
-
+from pydantic import BaseModel, ConfigDict
 
 class MarketPrices(BaseModel):
     id: int
     name: str
     bid: float
     offer: float
+    bid_size: float = 0
+    offer_size: float = 0
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
@@ -37,23 +46,36 @@ class MarketPrices(BaseModel):
         if id is None:
             id = state.market_name_to_id.get(name)
         prices = get_market_prices(client, market_id=id)
+
         return cls(#client = client, 
                          id = id,
                          name=name,
-                         bid = prices["bid"], offer = prices["offer"])
+                         bid = prices["bid"], 
+                         offer = prices["offer"],
+                         bid_size = prices["bid_size"],
+                         offer_size = prices["offer_size"]
+                         )
     
     def __add__(self, other):
+
         return MarketPrices(id=-1, name=self.name + ' + ' + other.name, 
-                            bid=self.bid + other.bid, offer=self.offer + other.offer)
+                            bid=self.bid + other.bid, offer=self.offer + other.offer,
+                            bid_size = min(self.bid_size, other.bid_size),
+                            offer_size = min(self.offer_size, other.offer_size),
+                            )
     
     def __mul__(self, other:float|int):
-        
         return MarketPrices(id=-1, name=self.name + ' * ' + str(other), 
-                            bid=self.bid * other, offer=self.offer * other)
+                            bid=self.bid * other, 
+                            offer=self.offer * other,
+                            bid_size = self.bid_size * other,
+                            offer_size = self.offer_size * other,
+                            )
+
     def __sub__(self, other):
         return MarketPrices(id=-1, name=self.name + ' - ' + other.name, 
-                            bid=self.bid - other.bid, offer=self.offer - other.offer)
-
+                            bid=self.bid - other.bid, offer=self.offer - other.offer,
+                            )
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
