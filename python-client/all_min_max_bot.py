@@ -50,24 +50,23 @@ def min_max_bot(
 
 def all_markets(client: TradingClient, *, size: float):
     for market in [
-        "alpha_tw",
-        "bravo_tw",
-        "charlie_tw",
-        "delta_tw",
-        "echo_tw",
-        "foxtrot_tw",
-        "golf_tw",
-        "india_tw",
-        "hotel_tw",
-        "abc_tw",
-        "def_tw",
-        "ghi_tw",
+        "alfa_tradewars",
+        "bravo_tradewars",
+        "charlie_tradewars",
+        "delta_tradewars",
+        "echo_tradewars",
+        "foxtrot_tradewars",
+        "golf_tradewars",
+        "india_tradewars",
+        "hotel_tradewars",
+        "abc_tradewars",
+        "def_tradewars",
+        "ghi_tradewars",
     ]:
         try:
             min_max_bot(client, market_name=market, size=size)
         except Exception as e:
             print(e)
-
 
 
 if __name__ == "__main__":
