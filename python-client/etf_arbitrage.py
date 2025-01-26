@@ -21,7 +21,7 @@ portfolios_dict = {
         "foxtrot_tradewars": 4,
     },
     "abc_tradewars": {
-        "alfa_tradewars": 2,
+        "alpha_tradewars": 2,
         "bravo_tradewars": 2,
         "charlie_tradewars": 2,
     },
@@ -67,8 +67,11 @@ class PComponent(BaseModel):
 
     @classmethod
     def from_name(cls, client, name: str, weight: float):
+        id_ = client.state().market_name_to_id.get(name)
+        if id_ is None:
+            print(f"Market {name} not found")
         return cls(
-            weight=weight, id=client.state().market_name_to_id.get(name), name=name
+            weight=weight, id=id_, name=name
         )
 
 
@@ -243,15 +246,16 @@ def arbitrage_etf_bot(
 
     # etf_name = "def_tradewars"
     
-    for etf_name, this_portfolio_dict in portfolios_dict.items():
-        logger.info(f"Starting market maker bot for market {etf_name}")
-        this_portfolio_dict = portfolios_dict[etf_name]
-        portfolio = [
-            PComponent.from_name(client, name=name, weight=weight)
-            for name, weight in this_portfolio_dict.items()
-        ]
-        # client.
-        while True:
+    while True:
+        for etf_name, this_portfolio_dict in portfolios_dict.items():
+            # import pdb; pdb.set_trace()
+            logger.info(f"Starting market maker bot for market {etf_name}")
+            this_portfolio_dict = portfolios_dict[etf_name]
+            portfolio = [
+                PComponent.from_name(client, name=name, weight=weight)
+                for name, weight in this_portfolio_dict.items()
+            ]
+
             if client.state().portfolio.available_balance < 200:
                 raise Exception("Not enough balance")
             sleep(freq)
