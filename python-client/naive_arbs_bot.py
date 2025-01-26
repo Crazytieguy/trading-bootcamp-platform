@@ -16,48 +16,48 @@ app = typer.Typer(pretty_exceptions_show_locals=False)
 # neg: sell, pos: buy
 arbs = [
     {
-        'Alpha': 0.2,
-        'Beta': 0.2,
-        'Charlie': 0.2,
+        'alphg': 0.2,
+        'beta': 0.2,
+        'charlie': 0.2,
         'ABC': -0.1
     },
     {
-        'Alpha': -0.2,
-        'Beta': -0.2,
-        'Charlie': -0.2,
+        'alphg': -0.2,
+        'beta': -0.2,
+        'charlie': -0.2,
         'ABC': 0.1
     },
     {
-        'Delta': 0.1,
-        'Epsilon': 0.1,
-        'Foxtrot': 0.4,
+        'delta': 0.1,
+        'epsilon': 0.1,
+        'foxtrot': 0.4,
         'DEF': -0.1
     },
     {
-        'Delta': -0.1,
-        'Epsilon': -0.1,
-        'Foxtrot': -0.4,
+        'delta': -0.1,
+        'epsilon': -0.1,
+        'foxtrot': -0.4,
         'DEF': 0.1
     },
     {
-        'Golf': 0.3,
-        'Hotel': 0.2,
-        'India': 0.1,
+        'golf': 0.3,
+        'hotel': 0.2,
+        'india': 0.1,
         'GHI': -0.1
     },
     {
-        'Golf': -0.3,
-        'Hotel': -0.2,
-        'India': -0.1,
+        'golf': -0.3,
+        'hotel': -0.2,
+        'india': -0.1,
         'GHI': 0.1
     }
 ]
 
-def round(n: float, up: bool=False):
-    import math
-    if up:
-        return math.ceil(n * 100) / 100
-    return math.floor(n * 100) / 100
+# def round(n: float, up: bool=False):
+#     import math
+#     if up:
+#         return math.ceil(n * 100) / 100
+#     return math.floor(n * 100) / 100
 
 # TODO: ensure position is not too far from 0
 def get_orders_to_fulfill_size(state, market_name, size):
