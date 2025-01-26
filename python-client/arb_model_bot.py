@@ -96,9 +96,9 @@ def arb_model_bot(
     # sectors = ["abc", "def", "ghi"]
     # set up market feeds?
     sector_ids = [client.state().market_name_to_id[name] for name in sectors]
-    
+
     while True:
-        for sector in sectors: # should be sectors
+        for sector in sectors:  # should be sectors
             state = client.state()
             # 1. collect market data for all constituent markets
             for market_id in sector_market_ids[sector]:
@@ -114,13 +114,16 @@ def arb_model_bot(
 
 def get_market_data(state, market_id: str):
     df = pd.DataFrame()
-    
+
     # get orderbook
     market_name = state.market_id_to_name[market_id]
+
+    logger.info("Getting market data for market %s", market_name)
+
     orders = state.markets[market_id].orders
     if not orders:
         logger.info(f"No market data available for market {market_name}")
-    
+
     # get trades
     bids = [order for order in orders if order.side == Side.BID]
     offers = [order for order in orders if order.side == Side.OFFER]
@@ -130,7 +133,7 @@ def get_market_data(state, market_id: str):
         latest_bid = None
     else:
         latest_bid = max(bids, key=lambda x: x.transaction_id)
-            
+
     if not offers:
         logger.info(f"No offers available for market {market_name}")
         latest_offer = None
@@ -140,14 +143,16 @@ def get_market_data(state, market_id: str):
     if latest_bid and latest_offer:
         spread = latest_bid.price - latest_offer.price
         data = {
-            'market_id': market_id,
-            'market_name': market_name,
-            'latest_bid_price': latest_bid.price,
-            'latest_offer_price': latest_offer.price,
-            'spread': spread
+            "market_id": market_id,
+            "market_name": market_name,
+            "latest_bid_price": latest_bid.price,
+            "latest_offer_price": latest_offer.price,
+            "spread": spread,
+            "bids": bids,
+            "offers": offers,
         }
         df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
-        
+
     pass
 
 
@@ -158,15 +163,18 @@ def get_market_data(state, market_id: str):
 def calculate_arbs(market_data: pd.DataFrame, sector_id: str):
     arbs = sector_to_arbs[sector_id]
     # find max arb size based on lowest individual asset size
-    df = 
+    # df =
     #
 
     pass
+
+
 class Signal:
     def __init__(self, market_id: str, side: Side, size: float):
         self.market_id = market_id
         self.side = side
         self.size = size
+
 
 def place_orders(signals: list[Signal]):
     pass
