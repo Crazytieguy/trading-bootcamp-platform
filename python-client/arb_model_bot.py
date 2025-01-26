@@ -57,9 +57,9 @@ class Sector:
 
 
 sector_market_ids = {
-    "abc": ["abc", "alpha", "bravo", "charlie"],
-    "def": ["def", "delta", "echo", "foxtrot"],
-    "ghi": ["ghi", "golf", "hotel", "india"],
+    "abc": ["abc_tradewards", "alpha_tradewards", "bravo_tradewards", "charlie_tradewards"],
+    "def": ["def_tradewards", "delta_tradewards", "echo_tradewards", "foxtrot_tradewards"],
+    "ghi": ["ghi_tradewards", "golf_tradewards", "hotel_tradewards", "india_tradewards"],
 }
 
 sector_to_arbs = {
