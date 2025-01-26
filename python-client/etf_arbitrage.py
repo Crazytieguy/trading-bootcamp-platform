@@ -52,7 +52,7 @@ class PComponent(BaseModel):
             name=name
         )
 
-def arbitrage_etf(portfolio:list[MarketPrices], etf_name:str, max_size:float=1.0, dry:bool=False):
+def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:float=1.0, dry:bool=False):
 
     etf_prices = MarketPrices.from_client(client, etf_name)
 
@@ -137,7 +137,7 @@ def arbitrage_etf(portfolio:list[MarketPrices], etf_name:str, max_size:float=1.0
 def arbitrage_etf_bot(
     client: TradingClient,
     *,
-    # market_name: str,
+    etf_name: str = "def_tradewars",
     spread: float,
     size: float,
     fade_per_order: float,
@@ -148,24 +148,25 @@ def arbitrage_etf_bot(
     # market_id = client.state().market_name_to_id[market_name]
 
 
-    etf_name = "def_tradewars"
+    # etf_name = "def_tradewars"
     logger.info(f"Starting market maker bot for market {etf_name}")
 
 
     portfolio = [PComponent.from_name(client, name="delta_tradewars", weight=1), 
                 PComponent.from_name(client, name="echo_tradewars", weight=1), 
-                PComponent.from_name(client, name="foxtrot_tradewars", weight=4)]
+                PComponent.from_name(client, name="foxtrot_tradewars", weight=4)
+                ]
 
     while True:
         sleep(1)
-        state = client.state()
-        market = state.markets.get(market_id)
-        client.out(market_id)
-        if market is None:
-            logger.info(f"No market data available for market {market_id}")
-            continue
+        # state = client.state()
+        # market = state.markets.get(market_id)
+        # client.out(market_id)
+        # if market is None:
+        #     logger.info(f"No market data available for market {market_id}")
+        #     continue
 
-        arbitrage_etf(portfolio, etf_name, dry=dry)
+        arbitrage_etf(client, portfolio, etf_name, dry=dry)
 
 if __name__ == "__main__":
     app()
