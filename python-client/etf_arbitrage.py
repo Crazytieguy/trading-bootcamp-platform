@@ -25,7 +25,11 @@ portfolios_dict = {
         "bravo_tradewars": 2,
         "charlie_tradewars": 2,
     },
-    "ghi_tradewars": {"golf_tradewars": 3, "hotel_tradewars": 2, "india_tradewars": 1},
+    "ghi_tradewars": 
+        {"golf_tradewars": 3,
+         "hotel_tradewars": 2,
+         "india_tradewars": 1
+    },
 }
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
@@ -101,6 +105,7 @@ def arbitrage_etf(
         # buy raw components and sell ETF
 
         bids = []
+        total_buy_cost = 0
         for market, prices in zip(portfolio, denovo_etf_components):
             market_id = market.id
 
@@ -111,7 +116,7 @@ def arbitrage_etf(
                 + f"buy {market.name} at {price}  | size: {size}"
                 + bcolors.ENDC
             )
-
+            total_buy_cost += price * size
             bid_ = ClientMessage(
                 create_order=CreateOrder(
                     market_id=market_id,
@@ -121,6 +126,12 @@ def arbitrage_etf(
                 )
             )
             bids.append(bid_)
+        # check if enough balance to buy:
+
+        if client.state().portfolio.available_balance < total_buy_cost:
+            print("Not enough balance")
+            return
+
         # sell ETF
         print(
             bcolors.RED
@@ -158,6 +169,10 @@ def arbitrage_etf(
             + f"buy {etf_prices.name} at {etf_prices.offer}  | size: {size}"
             + bcolors.ENDC
         )
+        if client.state().portfolio.available_balance < etf_prices.offer * etf_size:
+            print("Not enough balance")
+            return
+
         bids = [
             ClientMessage(
                 create_order=CreateOrder(
