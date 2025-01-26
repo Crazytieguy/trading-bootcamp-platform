@@ -34,7 +34,9 @@ def get_orders_to_fulfill_size(state, market_name, size):
             if order.side == Side.OFFER
         ][::-1]
         for order in top_offers:
-            order.size = size
+            if size < order.size:
+                order.price /= (order.size / size)
+                order.size = size
             size += order.size
             orders.append((market_id, order))
     else:
@@ -44,7 +46,9 @@ def get_orders_to_fulfill_size(state, market_name, size):
             if order.side == Side.BID
         ]
         for order in top_bids:
-            order.size = size
+            if size < order.size:
+                order.price /= (order.size / size)
+                order.size = size
             size -= order.size
             orders.append((market_id, order))
     return orders
@@ -53,24 +57,22 @@ async def run_arb_if_profitable(state, client, arb: dict):
     # TODO
     # +/- epsilon: .51
     expected_profit = 0
-    orders = []
     redeem_id, redeem_amount, redeem_market = None, 0, ""
     for market_name, size in arb.items():
         new_orders = get_orders_to_fulfill_size(state, market_name, size)
-        orders.extend(new_orders)
+        # orders.extend(new_orders)
         if len(market_name) == agg_market_name_len:
             redeem_id = new_orders[0][0]
             redeem_market = market_name
-            if size < 0:
-                redeem_amount = size
-                expected_profit += sum(order.price * order.size for _, order in new_orders)
-            else:
-                redeem_amount = size
-                expected_profit -= sum(order.price * order.size for _, order in new_orders)
-    if expected_profit - transaction_fee - 2 > 0:
-        redeem_amount += 0.51
-        logger.info(f"executing in market {redeem_market} for +0.51 {expected_profit}, {redeem_amount}")
-        client.redeem(redeem_id, redeem_amount)
+            redeem_amount = size
+        if size < 0:
+            expected_profit += sum(order.price * order.size for _, order in new_orders)
+        else:
+            expected_profit -= sum(order.price * order.size for _, order in new_orders)
+    # if expected_profit - transaction_fee - 2 > 0:
+    #     redeem_amount += 0.51
+    #     logger.info(f"executing in market {redeem_market} for +0.51 {expected_profit}, {redeem_amount}")
+    #     client.redeem(redeem_id, redeem_amount)
     elif expected_profit - transaction_fee > 0:
         logger.info(f"executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
         client.redeem(redeem_id, redeem_amount)
