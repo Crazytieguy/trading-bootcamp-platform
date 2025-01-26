@@ -1,3 +1,4 @@
+from metagame.websocket_api import CancelOrder, ClientMessage, CreateOrder, Side
 from price_utils import MarketPrices, bcolors
 from pydantic import BaseModel
 
@@ -80,7 +81,6 @@ def arbitrage_etf(portfolio:list[MarketPrices], etf_name:str, max_size:float=1.0
 if __name__ == '__main__':
     from dotenv import load_dotenv, dotenv_values
     from metagame import TradingClient
-    from metagame.websocket_api import CancelOrder, ClientMessage, CreateOrder, Side
     import os
 
     env = dotenv_values()
