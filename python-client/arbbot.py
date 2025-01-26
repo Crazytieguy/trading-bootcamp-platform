@@ -3,12 +3,12 @@ from metagame import TradingClient
 import os
 import numpy as np
 import pandas as pd
-from metagame.websocket_api import CancelOrder, ClientMessage, CreateOrder, Side
+from metagame.websocket_api import ClientMessage, CreateOrder, Side
 import time
 
 
 class ArbFinder:
-    def __init__(self, tradable_markets, arbs, min_profit_ratio=0.01):
+    def __init__(self, tradable_markets, arbs, etfs, min_profit_ratio=0.01):
         load_dotenv()
         self.client = TradingClient(
             api_url=os.environ["API_URL"],
@@ -35,6 +35,7 @@ class ArbFinder:
                 for market in self.client_state.markets.values()
             ]
         )
+        self.etfs = etfs
 
     def update_state(self):
         self.client_state = self.client.state()
@@ -224,6 +225,8 @@ class ArbFinder:
             buy_volume = round(buy_volume, 2)
             sell_volume = round(sell_volume, 2)
 
+            orders = []
+
             if buy_volume > 0:
                 buy_order = ClientMessage(
                     create_order=CreateOrder(
@@ -233,7 +236,7 @@ class ArbFinder:
                         side=Side.BID,
                     )
                 )
-                self.client.request(buy_order)
+                orders.append(buy_order)
 
             if sell_volume > 0:
                 sell_order = ClientMessage(
@@ -244,27 +247,55 @@ class ArbFinder:
                         side=Side.OFFER,
                     )
                 )
-                self.client.request(sell_order)
+                orders.append(sell_order)
+
+        self.client.request_many(orders)
+
+    def get_positions(self):
+        positions = np.zeros(len(self.tradable_markets))
+        updates = 0
+        for me in self.client_state.portfolio.market_exposures:
+            if me.market_id in self.tradable_markets:
+                positions[self.tradable_markets.index(me.market_id)] = me.position
+                updates += 1
+        if updates != len(self.tradable_markets):
+            print("Error: not all positions were updated.")
+
+        return positions
+    
+    def clear_etf_with_biggest_position(self):
+        positions = self.get_positions() * self.etfs
+        max_position_idx = np.argmax(np.abs(positions))
+        self.client.redeem(self.tradable_markets[max_position_idx], positions[max_position_idx])
 
 
 if __name__ == "__main__":
     # .                  A   B.  C   D.  E.  F.  G.  H.  I. bo.  abc, def, ghi
-    tradable_markets = [ 5,  6,  7,  8,  9,  10, 11, 12, 13, 14,  15, 16,  17]
-    arbs = np.array([  [ 2,  2,  2,  0,  0,  0,  0,  0,  0,  0,   -1,  0,  0],
-                       [ 0,  0,  0,  1,  1,  4,  0,  0,  0,  0,    0, -1,  0],
-                       [ 0,  0,  0,  0,  0,  0,  3,  2,  1,  0,    0,  0, -1],
-        ]
-    )
+    tradable_markets =  [5,  6,  7,  8,  9, 10,  11, 12, 13, 14, 15,  16,  17]
+    arbs = np.array([   [2,  2,  2,  0,  0,  0,  0,  0,   0,  0, -1,   0,   0],
+                        [0,  0,  0,  1,  1,  4,  0,  0,   0,  0,  0,  -1,   0],
+                        [0,  0,  0,  0,  0,  0,  3,  2,   1,  0,  0,   0,  -1]])
+    etfs = np.array(    [0,  0,  0,  0,  0,  0,  0,  0,   0,  0,  1,   1,   1]  )   
     arbs = np.vstack([arbs, -arbs])
-    arb_finder = ArbFinder(tradable_markets, arbs)
+    arb_finder = ArbFinder(tradable_markets, arbs, etfs)
 
     while True:
         arb_opportunity = arb_finder.find_arb_opportunity()
 
+        if arb_finder.get_available_balance() < 300:
+            arb_finder.clear_etf_with_biggest_position()
+
         if arb_opportunity is None:
-            print("No arb opportunity found!")
+            # Choose a random number between 1 and 10
+            r = np.random.randint(1, 10)
+            if r == 1:
+                print(
+                    f"{time.strftime('%H:%M:%S', time.localtime())} : No arb opportunities found."
+                )
         else:
-            print("Arb opportunity found!")
+            print(
+                f"{time.strftime('%H:%M:%S', time.localtime())} : Arb opportunity found!"
+            )
             print(arb_opportunity)
             available_balance = arb_finder.get_available_balance()
             print("Available balance: ", available_balance)
@@ -273,25 +304,23 @@ if __name__ == "__main__":
             sells = arb_opportunity["Sell"]
 
             if arb_opportunity["Capital Investment"] > available_balance:
-                ratio = available_balance / arb_opportunity["Capital Investment"]
+                ratio = available_balance / (arb_opportunity["Capital Investment"] + 0.01)
                 print(
                     "Capital investment exceeds available balance. Using ratio: ", ratio
                 )
                 buys = buys * ratio
                 sells = sells * ratio
 
-            print("Buying: ", buys)
-            # print("Buy Prices: ", arb_opportunity["Buy Levels"])
-            print("Selling: ", sells)
-            # print("Sell Prices: ", arb_opportunity["Sell Levels"])
+            if np.sqrt(np.linalg.norm(buys) ** 2 + np.linalg.norm(sells) ** 2) > 0.05:
+                print(f"{time.strftime('%H:%M:%S', time.localtime())} : Executing transactions.")
+                arb_finder.execute_transactions(
+                    buys,
+                    sells,
+                    arb_opportunity["Buy Levels"],
+                    arb_opportunity["Sell Levels"],
+                )
 
-            m = 0.5
+            else:
+                print(f"{time.strftime('%H:%M:%S', time.localtime())} : Arb opportunity is too small to execute.")
 
-            arb_finder.execute_transactions(
-                m * buys,
-                m * sells,
-                arb_opportunity["Buy Levels"],
-                arb_opportunity["Sell Levels"],
-            )
-
-        time.sleep(0.5)
+        time.sleep(0.2)
