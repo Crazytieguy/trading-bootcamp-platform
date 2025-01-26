@@ -143,9 +143,11 @@ def arbitrage_etf(
 
         for market in [etf_prices] + portfolio:
             client.out(market.id)
+            client.redeem(etf_prices.id, -etf_size)
+
     elif etf_prices.offer < denovo_etf_sum.bid:
         # buy ETF and sell raw components
-        size = min([max_size, denovo_etf_sum.bid_size, etf_prices.offer_size])
+        etf_size = min([max_size, denovo_etf_sum.bid_size, etf_prices.offer_size])
         # buy ETF
 
         print(
@@ -162,11 +164,10 @@ def arbitrage_etf(
                     price=etf_prices.offer,
                 )
             )
-        ]
+
         # sell components
         offers = []
         for market, prices in zip(portfolio, denovo_etf_components):
-            market_id = market.id
             price = prices.bid / market.weight
             size = round(size * market.weight, 2)
             print(
@@ -176,7 +177,7 @@ def arbitrage_etf(
             )
             offer_ = ClientMessage(
                 create_order=CreateOrder(
-                    market_id=market_id,
+                    market_id=market.id,
                     side=Side.OFFER,
                     size=size,
                     price=price,
@@ -185,7 +186,12 @@ def arbitrage_etf(
             offers.append(offer_)
             
         if not dry:
+            # import pdb; pdb.set_trace()  
+            if any((order.create_order.size <= 0 for order in bids + offers)):
+                print("Too small order size")
+                return
             client.request_many(bids + offers)
+            client.redeem(etf_prices.id, etf_size)
         # client.out(market_id)
         for market in portfolio + [etf_prices]:
             client.out(market.id)
@@ -217,7 +223,25 @@ def arbitrage_etf_bot(
     # market_id = client.state().market_name_to_id[market_name]
 
     # etf_name = "def_tradewars"
-    logger.info(f"Starting market maker bot for market {etf_name}")
+    
+    for etf_name, this_portfolio_dict in portfolios_dict.items():
+        logger.info(f"Starting market maker bot for market {etf_name}")
+        this_portfolio_dict = portfolios_dict[etf_name]
+        portfolio = [
+            PComponent.from_name(client, name=name, weight=weight)
+            for name, weight in this_portfolio_dict.items()
+        ]
+        # client.
+        while True:
+            if client.state().portfolio.available_balance < 200:
+                raise Exception("Not enough balance")
+            sleep(.4)
+            # state = client.state()
+            # market = state.markets.get(market_id)
+            # client.out(market_id)
+            # if market is None:
+            #     logger.info(f"No market data available for market {market_id}")
+            #     continue
 
     this_portfolio_dict = portfolios_dict[etf_name]
     portfolio = [
@@ -236,6 +260,7 @@ def arbitrage_etf_bot(
 
 
         arbitrage_etf(client, portfolio, etf_name, dry=dry, max_size=max_size)
+
 
 if __name__ == "__main__":
     app()
