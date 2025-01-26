@@ -1,18 +1,19 @@
+import asyncio
 import logging
 from typing import Annotated
-import asyncio
 
 import typer
 from dotenv import load_dotenv
+
 from metagame import TradingClient
-from metagame.websocket_api import Side, CreateOrder, ClientMessage
+from metagame.websocket_api import ClientMessage, CreateOrder, Side
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 load_dotenv()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
-
+# neg: sell, pos: buy
 arbs = [
     {
         'Alpha': 0.2,
@@ -43,7 +44,7 @@ arbs = [
         'Hotel': 0.2,
         'India': 0.1,
         'GHI': -0.1
-    }
+    },
     {
         'Golf': -0.3,
         'Hotel': -0.2,
@@ -58,6 +59,7 @@ def round(n: float, up: bool=False):
         return math.ceil(n * 100) / 100
     return math.floor(n * 100) / 100
 
+# TODO: ensure position is not too far from 0
 def get_orders_to_fulfill_size(state, market_name, size):
     market_id = state.market_name_to_id[market_name]
     market = state.markets.get(market_id)
@@ -67,23 +69,23 @@ def get_orders_to_fulfill_size(state, market_name, size):
         for order in
         sorted(market.orders, key=lambda x: x.price)
         if order.side == Side.OFFER
-    ][::-1]
+    ]
     top_bids = [
         order
         for order in sorted(market.orders, key=lambda x: x.price)
         if order.side == Side.BID
     ]
-    if size < 0:
-        for order in top_offers:
-            order.size = size # avoid order.size > size
+    if size > 0:
+        for order in top_offers[::-1]:
+            order.size = size
             size += order.size
             orders.append((market_id, order))
     else:
-        for order in top_bids[::-1]: # reverse reverse
+        for order in top_bids:
             order.size = size
             size -= order.size
             orders.append((market_id, order))
-    return orders
+    return orders,
 
 async def run_arb_if_profitable(client, arb: dict):
     while True:
@@ -93,27 +95,18 @@ async def run_arb_if_profitable(client, arb: dict):
             continue
         expected_profit = 0
         orders = []
+        redeem_id, redeem_amount = None, None
         for market_name, size in arb.items():
             orders.extend(get_orders_to_fulfill_size(state, market_name, size))
             expected_profit += sum(order.price for order in orders)
-        if expected_profit > 0:
-            bids = []
-            offers = []
-            for market_id, order in orders:
-                client.out(market_id)
-                if order.side == Side.OFFER:
-                    bids.append(
-                        ClientMessage(
-                            create_order=CreateOrder(market_id, order.price, order.size, Side.BID)
-                        )
-                    )
+            if len(market_name) == 3:
+                redeem_id = market_name
+                if size < 0:
+                    redeem_amount = max(order.price for order in orders)
                 else:
-                    bids.append(
-                        ClientMessage(
-                            create_order=CreateOrder(market_id, order.price, order.size, Side.OFFER)
-                        )
-                    )
-            client.request_many(bids + offers)
+                    redeem_amount = min(order.price for order in orders)
+        if expected_profit > 0:
+            client.redeem(redeem_id, redeem_amount)
 
 async def arbs_bot(
     client: TradingClient,
