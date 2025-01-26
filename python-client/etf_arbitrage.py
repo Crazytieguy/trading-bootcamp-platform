@@ -18,7 +18,7 @@ portfolios_dict = {
     "def_tradewars": {
         "delta_tradewars": 1,
         "echo_tradewars": 1,
-        "foxtrot_tradewars": 4,
+        "foxtrot_tradewars": 4, 
     },
     "abc_tradewars": {
         "alpha_tradewars": 2,
@@ -102,7 +102,7 @@ def arbitrage_etf(
     )
 
     if etf_prices.bid > denovo_etf_sum.offer:
-        size = min(
+        etf_size = min(
             [max_size, etf_prices.bid_size, denovo_etf_sum.offer_size]
         )  # check for the size of the trad
         # buy raw components and sell ETF
@@ -113,7 +113,7 @@ def arbitrage_etf(
             market_id = market.id
 
             price = prices.offer / market.weight
-            size = round(size * market.weight, 2)
+            size = round(etf_size * market.weight, 2)
             print(
                 bcolors.OKGREEN
                 + f"buy {market.name} at {price}  | size: {size}"
@@ -146,21 +146,24 @@ def arbitrage_etf(
                 create_order=CreateOrder(
                     market_id=etf_prices.id,
                     price=etf_prices.bid,
-                    size=size,
+                    size=etf_size,
                     side=Side.OFFER,
                 )
             )
         ]
+
         if not dry:
             # import pdb; pdb.set_trace()
             if any((order.create_order.size <= 0 for order in bids + offers)):
                 print("Too small order size")
                 return
             client.request_many(bids + offers)
+            for market in [etf_prices] + portfolio:
+                client.out(market.id)
 
-        for market in [etf_prices] + portfolio:
-            client.out(market.id)
-            client.redeem(etf_prices.id, -etf_size)
+            if client.state().portfolio.available_balance < 350:
+                response = client.redeem(etf_prices.id, -etf_size)
+                print(f"redeem: {response}")
 
     elif etf_prices.offer < denovo_etf_sum.bid:
         # buy ETF and sell raw components
@@ -169,7 +172,7 @@ def arbitrage_etf(
 
         print(
             bcolors.OKGREEN
-            + f"buy {etf_prices.name} at {etf_prices.offer}  | size: {size}"
+            + f"buy {etf_prices.name} at {etf_prices.offer}  | size: {etf_size}"
             + bcolors.ENDC
         )
         if client.state().portfolio.available_balance < etf_prices.offer * etf_size:
@@ -181,7 +184,7 @@ def arbitrage_etf(
                 create_order=CreateOrder(
                     market_id=etf_prices.id,
                     side=Side.BID,
-                    size=size,
+                    size=etf_size,
                     price=etf_prices.offer,
                 )
             )]
@@ -190,7 +193,7 @@ def arbitrage_etf(
         offers = []
         for market, prices in zip(portfolio, denovo_etf_components):
             price = prices.bid / market.weight
-            size = round(size * market.weight, 2)
+            size = round(etf_size * market.weight, 2)
             print(
                 bcolors.RED
                 + f"sell {market.name} at {price}  | size: {size}"
@@ -212,20 +215,24 @@ def arbitrage_etf(
                 print("Too small order size")
                 return
             client.request_many(bids + offers)
-            client.redeem(etf_prices.id, etf_size)
-        # client.out(market_id)
-        for market in portfolio + [etf_prices]:
-            client.out(market.id)
+            # client.redeem(etf_prices.id, etf_size)
+            # client.out(market_id)
+            for market in portfolio + [etf_prices]:
+                client.out(market.id)
+
+            if client.state().portfolio.available_balance < 350:
+                response = client.redeem(etf_prices.id, -etf_size)
+                print(f"redeem: {response}")
     else:
         print(
             bcolors.YELLOW + "No arbitrage opportunity\n" + bcolors.ENDC,
-            f"ETF {etf_name} bid {etf_prices.bid}\n",
-            f"ETF {etf_name} offer {etf_prices.offer}\n",
+            f"ETF {etf_name}\tbid {etf_prices.bid}\t",
+            f"offer {etf_prices.offer}\n",
             *[
                 "Component "
                 + market.name
-                + f" bid {prices.bid}"
-                + f" offer {prices.offer}\n"
+                + f"\tbid {prices.bid}"
+                + f"\toffer {prices.offer}\n"
                 for market, prices in zip(portfolio, denovo_etf_components)
             ],
         )
@@ -249,6 +256,10 @@ def arbitrage_etf_bot(
     while True:
         for etf_name, this_portfolio_dict in portfolios_dict.items():
             # import pdb; pdb.set_trace()
+            # etf_name = "abc_tradewars"
+            # etf_name = "def_tradewars"
+            # etf_name = "ghi_tradewars"
+            this_portfolio_dict = portfolios_dict[etf_name]
             logger.info(f"Starting market maker bot for market {etf_name}")
             this_portfolio_dict = portfolios_dict[etf_name]
             portfolio = [
@@ -266,7 +277,7 @@ def arbitrage_etf_bot(
             #     logger.info(f"No market data available for market {market_id}")
             #     continue
             arbitrage_etf(client, portfolio, etf_name, dry=dry, max_size=max_size)
-
+            # break
 
 if __name__ == "__main__":
     app()
