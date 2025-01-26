@@ -1970,8 +1970,31 @@ mod tests {
         );
         // 100 - 4 = 96
         assert_eq!(a_portfolio.available_balance, dec!(96));
-        let settle_status = db.settle_market(2, dec!(7), 1).await?;
-        assert_matches!(settle_status, SettleMarketStatus::Success { .. });
+
+        let eft_settle_status = db.settle_market(etf_id, dec!(0), 1).await?;
+        assert_matches!(eft_settle_status, SettleMarketStatus::ConstituentNotSettled);
+
+        let m1_settle_status = db.settle_market(1, dec!(16), 1).await?;
+        assert_matches!(m1_settle_status, SettleMarketStatus::Success { .. });
+
+        let etf_settle_status = db.settle_market(etf_id, dec!(0), 1).await?;
+        assert_matches!(etf_settle_status, SettleMarketStatus::ConstituentNotSettled);
+
+        let m2_settle_status = db.settle_market(2, dec!(6), 1).await?;
+        assert_matches!(m2_settle_status, SettleMarketStatus::Success { .. });
+
+        let etf_settle_status = db.settle_market(etf_id, dec!(0), 1).await?;
+        assert_matches!(etf_settle_status, SettleMarketStatus::Success { .. });
+
+        let etf_market_settle = sqlx::query_scalar!(
+            r#"SELECT settled_price as "settled_price: Text<Decimal>" FROM market where id = ?"#,
+            etf_id
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        // -1 * 16 + 2 * 6 = -16 + 12 = -4
+        assert_eq!(etf_market_settle, Some(Text(dec!(-4))));
         let redeem_status = db.redeem(etf_id, 1, dec!(-1)).await?;
         assert_matches!(redeem_status, RedeemStatus::MarketSettled);
         Ok(())
