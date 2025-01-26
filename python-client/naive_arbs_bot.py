@@ -46,30 +46,38 @@ def get_orders_to_fulfill_size(state, market_name, size):
             order.size = size
             size -= order.size
             orders.append((market_id, order))
-    return orders,
+    return orders
 
 async def run_arb_if_profitable(client, arb: dict):
-    while True:
-        try:
-            state = client.recv(timeout=0)
-        except TimeoutError:
-            continue
-        print(state)
-        expected_profit = 0
-        orders = []
-        redeem_id, redeem_amount = None, None
-        for market_name, size in arb.items():
-            orders.extend(get_orders_to_fulfill_size(state, market_name, size))
-            expected_profit += sum(order.price for order in orders)
-            if len(market_name) == agg_market_name_len:
-                redeem_id = market_name
-                if size < 0:
-                    redeem_amount = max(order.price for order in orders)
-                else:
-                    redeem_amount = min(order.price for order in orders)
-        if expected_profit > 0:
-            logger.info(f"executing trade for expected profit {expected_profit}, {redeem_id}, {redeem_amount}")
-            client.redeem(redeem_id, redeem_amount)
+    # TODO
+    # while True:
+    #     try:
+    #         state = client.recv(timeout=0)
+    #     except TimeoutError:
+    #         continue
+    # print(f"state: {state}")
+    # if not hasattr(state, "market_name_to_id"):
+    #     continue
+    state = client.state()
+    expected_profit = 0
+    orders = []
+    redeem_id, redeem_amount = None, None
+    for market_name, size in arb.items():
+        new_orders = get_orders_to_fulfill_size(state, market_name, size)
+        orders.extend(new_orders)
+        breakpoint()
+        expected_profit += sum(order.price for _, order in orders)
+        if len(market_name) == agg_market_name_len:
+            redeem_id = orders[0][0]
+            if size < 0:
+                redeem_amount = max(order.price for _, order in orders)
+            else:
+                redeem_amount = min(order.price for _, order in orders)
+    if expected_profit > 0:
+        logger.info(f"executing trade for expected profit {expected_profit}, {redeem_id}, {redeem_amount}")
+        client.redeem(redeem_id, redeem_amount)
+    else:
+        logger.info(f"not executing trade for expected profit {expected_profit}, {redeem_id}, {redeem_amount}")
 
 async def arbs_bot(
     client: TradingClient,
