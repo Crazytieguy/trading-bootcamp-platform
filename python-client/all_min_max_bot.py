@@ -49,18 +49,18 @@ def min_max_bot(
 
 def all_markets(client: TradingClient, *, size: float):
     for market in [
-        "alphg",
-        "bravo",
-        "charlie",
-        "delta",
-        "echo",
-        "foxtrot",
-        "golf",
-        "india",
-        "hotel",
-        "abc",
-        "def",
-        "ghi",
+        "alpha_tw",
+        "bravo_tw",
+        "charlie_tw",
+        "delta_tw",
+        "echo_tw",
+        "foxtrot_tw",
+        "golf_tw",
+        "india_tw",
+        "hotel_tw",
+        "abc_tw",
+        "def_tw",
+        "ghi_tw",
     ]:
         min_max_bot(client, market_name=market, size=size)
 
