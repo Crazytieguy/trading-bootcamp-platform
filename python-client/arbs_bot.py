@@ -9,8 +9,8 @@ from constants import agg_market_name_len, arbs
 from metagame import TradingClient
 from metagame.websocket_api import ClientMessage, CreateOrder, Side
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
 load_dotenv()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
@@ -43,7 +43,7 @@ def get_orders_to_fulfill_size(state, market_name, size):
             size += order.size
             orders.append((market_id, order))
     else:
-        for order in top_bids[::-1]: # reverse reverse
+        for order in top_bids: # reverse reverse
             order.size = size
             size -= order.size
             orders.append((market_id, order))
