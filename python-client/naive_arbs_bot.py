@@ -5,7 +5,7 @@ from typing import Annotated
 import typer
 from dotenv import load_dotenv
 
-from constants import arbs
+from constants import agg_market_name_len, arbs
 from metagame import TradingClient
 from metagame.websocket_api import ClientMessage, CreateOrder, Side
 
@@ -28,8 +28,7 @@ def get_orders_to_fulfill_size(state, market_name, size):
     orders = []
     top_offers = [
         order
-        for order in
-        sorted(market.orders, key=lambda x: x.price)
+        for order in sorted(market.orders, key=lambda x: x.price)
         if order.side == Side.OFFER
     ]
     top_bids = [
@@ -61,7 +60,7 @@ async def run_arb_if_profitable(client, arb: dict):
         for market_name, size in arb.items():
             orders.extend(get_orders_to_fulfill_size(state, market_name, size))
             expected_profit += sum(order.price for order in orders)
-            if len(market_name) == 3:
+            if len(market_name) == agg_market_name_len:
                 redeem_id = market_name
                 if size < 0:
                     redeem_amount = max(order.price for order in orders)

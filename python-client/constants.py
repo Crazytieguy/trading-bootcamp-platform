@@ -1,4 +1,5 @@
 # neg: sell, pos: buy
+agg_market_name_len = 6
 arbs = [
     {
         'alpha_tw': 0.2,
