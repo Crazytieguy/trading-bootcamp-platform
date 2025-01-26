@@ -1,11 +1,11 @@
 import asyncio
 import logging
 import time
+from datetime import datetime
 from typing import Annotated
 
 import typer
 from dotenv import load_dotenv
-from datetime import datetime
 
 import constants
 from constants import agg_market_name_len, arbs, transaction_fee
@@ -38,8 +38,9 @@ def get_orders_to_fulfill_size(state, market_name, size):
             if order.side == Side.OFFER
         ][::-1]
         for order in top_offers:
-            if size < order.size:
-                order.size = size
+            order.size = min(size, order.size)
+            if order.size == 0:
+                break
             size -= order.size
             orders.append((market_id, order))
     else:
@@ -50,8 +51,9 @@ def get_orders_to_fulfill_size(state, market_name, size):
         ]
         for order in top_bids:
             # size is neg | order.size is pos
-            if abs(size) < order.size:
-                order.size = abs(size)
+            order.size = min(abs(size), order.size)
+            if order.size == 0:
+                break
             size += order.size
             orders.append((market_id, order))
     return orders
@@ -110,8 +112,6 @@ def run_arb_if_profitable(state, client, arb: dict):
             f"{datetime.now()}: executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}"
         )
         fill_orders(client, orders)
-    # if expected_profit - transaction_fee > 0:
-    # client.redeem(redeem_id, redeem_amount)
     else:
         logger.info(
             f"{datetime.now()}: not executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}"
@@ -124,6 +124,7 @@ def run_arb_if_profitable(state, client, arb: dict):
         #     ),
         #     0,
         # )
+        # client.redeem(redeem_id, redeem_amount)
 
 
 async def arbs_bot(
@@ -138,7 +139,7 @@ async def arbs_bot(
     # 100/s rate limit: 100 / 7 = 14x/s max runs
     # TOOD: try pulling state here if we hit ratelimits too often
     while True:
-        time.sleep(3)
+        time.sleep(2)
         state = client.state()
         for arb in arbs:
             run_arb_if_profitable(state, client, arb)
