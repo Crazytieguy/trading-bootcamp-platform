@@ -5,6 +5,7 @@ from typing import Annotated
 
 import typer
 from dotenv import load_dotenv
+from datetime import datetime
 
 import constants
 from constants import agg_market_name_len, arbs, transaction_fee
@@ -17,11 +18,13 @@ load_dotenv()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
 
-# def round(n: float, up: bool=False):
+# def round(n: float, up: bool = False):
 #     import math
+#
 #     if up:
 #         return math.ceil(n * 100) / 100
 #     return math.floor(n * 100) / 100
+
 
 # TODO: ensure position is not too far from 0
 def get_orders_to_fulfill_size(state, market_name, size):
@@ -46,17 +49,13 @@ def get_orders_to_fulfill_size(state, market_name, size):
             if order.side == Side.BID
         ]
         for order in top_bids:
-<<<<<<< HEAD
-            if size > order.size:
-                order.size = size
-=======
             # size is neg | order.size is pos
             if abs(size) < order.size:
                 order.size = abs(size)
->>>>>>> 51adab1db495165994e6c981e27a4af0c93b50b2
             size += order.size
             orders.append((market_id, order))
     return orders
+
 
 def fill_orders(client, orders):
     bids = []
@@ -66,16 +65,21 @@ def fill_orders(client, orders):
         if order.side == Side.OFFER:
             bids.append(
                 ClientMessage(
-                    create_order=CreateOrder(market_id, order.price, order.size, Side.BID)
+                    create_order=CreateOrder(
+                        market_id, order.price, order.size, Side.BID
+                    )
                 )
             )
         else:
             offers.append(
                 ClientMessage(
-                    create_order=CreateOrder(market_id, order.price, order.size, Side.OFFER)
+                    create_order=CreateOrder(
+                        market_id, order.price, order.size, Side.OFFER
+                    )
                 )
             )
     client.request_many(bids + offers)
+
 
 def run_arb_if_profitable(state, client, arb: dict):
     # TODO
@@ -102,12 +106,16 @@ def run_arb_if_profitable(state, client, arb: dict):
     #     logger.info(f"executing in market {redeem_market} for +0.51 {expected_profit}, {redeem_amount}")
     #     client.redeem(redeem_id, redeem_amount)
     if expected_profit > 0:
-        logger.info(f"executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
+        logger.info(
+            f"{datetime.now()}: executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}"
+        )
         fill_orders(client, orders)
     # if expected_profit - transaction_fee > 0:
-        # client.redeem(redeem_id, redeem_amount)
+    # client.redeem(redeem_id, redeem_amount)
     else:
-        logger.info(f"not executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
+        logger.info(
+            f"{datetime.now()}: not executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}"
+        )
         # current_position = next(
         #     (
         #         exp.position
@@ -141,6 +149,7 @@ async def arbs_bot(
     #     tasks = [run_arb_if_profitable(state, client, arb) for arb in arbs]
     #     await asyncio.gather(*tasks)
 
+
 @app.command()
 def main(
     jwt: Annotated[str, typer.Option(envvar="JWT")],
@@ -148,12 +157,8 @@ def main(
     act_as: Annotated[int, typer.Option(envvar="ACT_AS")],
 ):
     with TradingClient(api_url, jwt, act_as) as client:
-        asyncio.run(
-            arbs_bot(
-                client,
-                arbs=arbs
-            )
-        )
+        asyncio.run(arbs_bot(client, arbs=arbs))
+
 
 if __name__ == "__main__":
     app()
