@@ -3,6 +3,7 @@ from typing import Annotated
 
 import typer
 from dotenv import load_dotenv
+
 from metagame import TradingClient
 from metagame.websocket_api import Side
 
@@ -62,7 +63,11 @@ def all_markets(client: TradingClient, *, size: float):
         "def_tw",
         "ghi_tw",
     ]:
-        min_max_bot(client, market_name=market, size=size)
+        try:
+            min_max_bot(client, market_name=market, size=size)
+        except Exception as e:
+            print(e)
+
 
 
 if __name__ == "__main__":
