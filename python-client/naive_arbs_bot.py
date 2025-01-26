@@ -35,7 +35,6 @@ def get_orders_to_fulfill_size(state, market_name, size):
         ][::-1]
         for order in top_offers:
             if size < order.size:
-                order.price /= (order.size / size)
                 order.size = size
             size -= order.size
             orders.append((market_id, order))
@@ -47,7 +46,6 @@ def get_orders_to_fulfill_size(state, market_name, size):
         ]
         for order in top_bids:
             if size < order.size:
-                order.price /= (order.size / size)
                 order.size = size
             size += order.size
             orders.append((market_id, order))
@@ -72,7 +70,7 @@ def fill_orders(client, orders):
             )
     client.request_many(bids + offers)
 
-async def run_arb_if_profitable(state, client, arb: dict):
+def run_arb_if_profitable(state, client, arb: dict):
     # TODO
     # +/- epsilon: .51
     expected_profit = 0
@@ -101,6 +99,7 @@ async def run_arb_if_profitable(state, client, arb: dict):
     else:
         logger.info(f"not executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
 
+
 async def arbs_bot(
     client: TradingClient,
     *,
@@ -112,11 +111,15 @@ async def arbs_bot(
     # 7 max
     # 100/s rate limit: 100 / 7 = 14x/s max runs
     # TOOD: try pulling state here if we hit ratelimits too often
-    while True:
-        time.sleep(2)
-        state = client.state()
-        tasks = [run_arb_if_profitable(state, client, arb) for arb in arbs]
-        await asyncio.gather(*tasks)
+    state = client.state()
+    for arb in arbs:
+        run_arb_if_profitable(state, client, arb)
+    # TODO
+    # while True:
+    #     time.sleep(2)
+    #     state = client.state()
+    #     tasks = [run_arb_if_profitable(state, client, arb) for arb in arbs]
+    #     await asyncio.gather(*tasks)
 
 @app.command()
 def main(
