@@ -91,7 +91,7 @@ def run_arb_if_profitable(state, client, arb: dict):
             expected_profit += sum(order.price * order.size for _, order in new_orders)
         else:
             expected_profit -= sum(order.price * order.size for _, order in new_orders)
-        orders.append(new_orders)
+        orders.extend(new_orders)
     # if expected_profit - transaction_fee - 2 > 0:
     #     redeem_amount += 0.51
     #     logger.info(f"executing in market {redeem_market} for +0.51 {expected_profit}, {redeem_amount}")
