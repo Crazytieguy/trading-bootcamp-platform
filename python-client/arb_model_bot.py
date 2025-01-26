@@ -109,14 +109,27 @@ def get_market_data(state, market_id: str):
 
     if not bids:
         logger.info(f"No bids available for market {market_name}")
+        latest_bid = None
+    else:
+        latest_bid = max(bids, key=lambda x: x.transaction_id)
             
     if not offers:
         logger.info(f"No offers available for market {market_name}")
+        latest_offer = None
+    else:
+        latest_offer = max(offers, key=lambda x: x.transaction_id)
 
-    latest_bid = max(bids, key=lambda x: x.transaction_id)
-    latest_offer = max(offers, key=lambda x: x.transaction_id)
-    spread = latest_bid.price - latest_offer.price
-
+    if latest_bid and latest_offer:
+        spread = latest_bid.price - latest_offer.price
+        data = {
+            'market_id': market_id,
+            'market_name': market_name,
+            'latest_bid_price': latest_bid.price,
+            'latest_offer_price': latest_offer.price,
+            'spread': spread
+        }
+        df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
+        
     pass
 
 
