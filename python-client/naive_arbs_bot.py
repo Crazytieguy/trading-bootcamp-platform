@@ -88,15 +88,15 @@ def run_arb_if_profitable(state, client, arb: dict):
     # +/- epsilon: .51
     expected_profit = 0
     orders = []
-    redeem_id, redeem_amount, redeem_market = None, 0, ""
+    # redeem_id, redeem_amount, redeem_market = None, 0, ""
     for market_name, size in arb.items():
         # size *= constants.multiplier
         new_orders = get_orders_to_fulfill_size(state, market_name, size)
         # orders.extend(new_orders)
-        if len(market_name) == agg_market_name_len:
-            redeem_id = new_orders[0][0]
-            redeem_market = market_name
-            redeem_amount = size
+        # if len(market_name) == agg_market_name_len:
+            # redeem_id = new_orders[0][0]
+            # redeem_market = market_name
+            # redeem_amount = size
             # redeem_market_id = state.market_name_to_id[market_name]
         if size < 0:
             expected_profit += sum(order.price * order.size for _, order in new_orders)
