@@ -35,7 +35,7 @@ def main(
             size=size,
             fade_per_order=fade_per_order,
             prior=prior,
-            dry=True
+            dry=False
         )
 
 
@@ -71,8 +71,8 @@ def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:
         for market, prices in zip(portfolio, denovo_etf_components):
             market_id = market.id
             price = prices.bid / market.weight
-            size = size / market.weight
-            print(bcolors.OKGREEN + f"buy {market.name} at {price}" + bcolors.ENDC)
+            size = round(size / market.weight, 2)
+            print(bcolors.OKGREEN + f"buy {market.name} at {price}  | size: {size}" + bcolors.ENDC)
             
             bid_ = ClientMessage(
                 create_order=CreateOrder(
@@ -84,7 +84,7 @@ def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:
             )
             bids.append(bid_)
         # sell ETF
-        print(bcolors.RED + f"sell {etf_prices.name} at {etf_prices.bid}" + bcolors.ENDC)
+        print(bcolors.RED + f"sell {etf_prices.name} at {etf_prices.bid} | size: {size}" + bcolors.ENDC)
         offers = [ClientMessage(
                 create_order=CreateOrder(
                     market_id=etf_prices.id,
@@ -94,6 +94,10 @@ def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:
                 )
             )]
         if not dry:
+            # import pdb; pdb.set_trace()
+            if any((order.create_order.size <= 0 for order in bids + offers)):
+                print("Too small order size")
+                return
             client.request_many(bids + offers)
 
         for market in ([etf_prices] + portfolio):
@@ -115,7 +119,7 @@ def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:
         for market, prices in zip(portfolio, denovo_etf_components):
             market_id = market.id
             price = prices.offer / market.weight
-            size = size / market.weight
+            size = round(size / market.weight, 2)
             print(f"sell {market.name} at {price}")
             offer_ = ClientMessage(
                 create_order=CreateOrder(
@@ -125,13 +129,24 @@ def arbitrage_etf(client , portfolio:list[MarketPrices], etf_name:str, max_size:
                 price=price,
             ))
             offers.append(offer_)
+        
         if not dry:
+            if any((order.create_order.size <= 0 for order in bids + offers)):
+                print("Too small order size")
+                return
             client.request_many(bids + offers)
         # client.out(market_id)
         for market in (portfolio + [etf_prices]):
             client.out(market.id)
     else:
-        print("No arbitrage opportunity")
+        print("No arbitrage opportunity\n",
+            f"ETF {etf_name} bid {etf_prices.bid}\n",
+            f"ETF {etf_name} offer {etf_prices.offer}\n",
+            *["Component " + market.name + f" bid {prices.bid}" + f" offer {prices.offer}\n"
+             for market, prices in zip(portfolio, denovo_etf_components)],
+
+        )
+
 
 
 def arbitrage_etf_bot(

@@ -7,7 +7,7 @@ side_dict= {1:"bid", 2:"offer"}
 def get_prices(market):
     # highest bid
     try:
-        bid = max((order for order in market.orders if order.side==1), key=lambda x: -x.price)
+        bid = max((order for order in market.orders if order.side==1), key=lambda x: x.price)
         bid_price = bid.price
         bid_size = bid.size
     except (IndexError, ValueError):
