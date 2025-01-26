@@ -6,6 +6,7 @@ from typing import Annotated
 import typer
 from dotenv import load_dotenv
 
+import constants
 from constants import agg_market_name_len, arbs, transaction_fee
 from metagame import TradingClient
 from metagame.websocket_api import ClientMessage, CreateOrder, Side
@@ -45,8 +46,14 @@ def get_orders_to_fulfill_size(state, market_name, size):
             if order.side == Side.BID
         ]
         for order in top_bids:
+<<<<<<< HEAD
             if size > order.size:
                 order.size = size
+=======
+            # size is neg | order.size is pos
+            if abs(size) < order.size:
+                order.size = abs(size)
+>>>>>>> 51adab1db495165994e6c981e27a4af0c93b50b2
             size += order.size
             orders.append((market_id, order))
     return orders
@@ -55,7 +62,7 @@ def fill_orders(client, orders):
     bids = []
     offers = []
     for market_id, order in orders:
-        client.out(market_id)
+        # client.out(market_id)
         if order.side == Side.OFFER:
             bids.append(
                 ClientMessage(
@@ -63,7 +70,7 @@ def fill_orders(client, orders):
                 )
             )
         else:
-            bids.append(
+            offers.append(
                 ClientMessage(
                     create_order=CreateOrder(market_id, order.price, order.size, Side.OFFER)
                 )
@@ -77,6 +84,7 @@ def run_arb_if_profitable(state, client, arb: dict):
     orders = []
     redeem_id, redeem_amount, redeem_market = None, 0, ""
     for market_name, size in arb.items():
+        # size *= constants.multiplier
         new_orders = get_orders_to_fulfill_size(state, market_name, size)
         # orders.extend(new_orders)
         if len(market_name) == agg_market_name_len:
@@ -88,15 +96,16 @@ def run_arb_if_profitable(state, client, arb: dict):
             expected_profit += sum(order.price * order.size for _, order in new_orders)
         else:
             expected_profit -= sum(order.price * order.size for _, order in new_orders)
-        orders.append(new_orders)
+        orders.extend(new_orders)
     # if expected_profit - transaction_fee - 2 > 0:
     #     redeem_amount += 0.51
     #     logger.info(f"executing in market {redeem_market} for +0.51 {expected_profit}, {redeem_amount}")
     #     client.redeem(redeem_id, redeem_amount)
-    if expected_profit - transaction_fee > 0:
-        # fill_orders(client, orders)
+    if expected_profit > 0:
         logger.info(f"executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
-        client.redeem(redeem_id, redeem_amount)
+        fill_orders(client, orders)
+    # if expected_profit - transaction_fee > 0:
+        # client.redeem(redeem_id, redeem_amount)
     else:
         logger.info(f"not executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
         # current_position = next(
@@ -120,9 +129,11 @@ async def arbs_bot(
     # 7 max
     # 100/s rate limit: 100 / 7 = 14x/s max runs
     # TOOD: try pulling state here if we hit ratelimits too often
-    state = client.state()
-    for arb in arbs:
-        run_arb_if_profitable(state, client, arb)
+    while True:
+        time.sleep(3)
+        state = client.state()
+        for arb in arbs:
+            run_arb_if_profitable(state, client, arb)
     # TODO
     # while True:
     #     time.sleep(2)
