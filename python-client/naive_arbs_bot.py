@@ -9,8 +9,8 @@ from constants import agg_market_name_len, arbs
 from metagame import TradingClient
 from metagame.websocket_api import ClientMessage, CreateOrder, Side
 
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 load_dotenv()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
@@ -54,6 +54,7 @@ async def run_arb_if_profitable(client, arb: dict):
             state = client.recv(timeout=0)
         except TimeoutError:
             continue
+        print(state)
         expected_profit = 0
         orders = []
         redeem_id, redeem_amount = None, None
@@ -67,6 +68,7 @@ async def run_arb_if_profitable(client, arb: dict):
                 else:
                     redeem_amount = min(order.price for order in orders)
         if expected_profit > 0:
+            logger.info(f"executing trade for expected profit {expected_profit}, {redeem_id}, {redeem_amount}")
             client.redeem(redeem_id, redeem_amount)
 
 async def arbs_bot(
