@@ -45,8 +45,9 @@ def get_orders_to_fulfill_size(state, market_name, size):
             if order.side == Side.BID
         ]
         for order in top_bids:
-            if size < order.size:
-                order.size = size
+            # size is neg | order.size is pos
+            if abs(size) < order.size:
+                order.size = abs(size)
             size += order.size
             orders.append((market_id, order))
     return orders
@@ -83,6 +84,7 @@ def run_arb_if_profitable(state, client, arb: dict):
             redeem_id = new_orders[0][0]
             redeem_market = market_name
             redeem_amount = size
+            # redeem_market_id = state.market_name_to_id[market_name]
         if size < 0:
             expected_profit += sum(order.price * order.size for _, order in new_orders)
         else:
@@ -93,11 +95,19 @@ def run_arb_if_profitable(state, client, arb: dict):
     #     logger.info(f"executing in market {redeem_market} for +0.51 {expected_profit}, {redeem_amount}")
     #     client.redeem(redeem_id, redeem_amount)
     if expected_profit - transaction_fee > 0:
-        fill_orders(client, orders)
+        # fill_orders(client, orders)
         logger.info(f"executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
-        # client.redeem(redeem_id, redeem_amount)
+        client.redeem(redeem_id, redeem_amount)
     else:
         logger.info(f"not executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
+        # current_position = next(
+        #     (
+        #         exp.position
+        #         for exp in state.portfolio.market_exposures
+        #         if exp.market_id == market_id
+        #     ),
+        #     0,
+        # )
 
 
 async def arbs_bot(
