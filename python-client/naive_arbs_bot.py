@@ -52,35 +52,30 @@ def get_orders_to_fulfill_size(state, market_name, size):
 async def run_arb_if_profitable(state, client, arb: dict):
     # TODO
     # +/- epsilon: .51
-    # TODO
-    # while True:
-    #     try:
-    #         state = client.recv(timeout=0)
-    #     except TimeoutError:
-    #         continue
-    # print(f"state: {state}")
-    # if not hasattr(state, "market_name_to_id"):
-    #     continue
     expected_profit = 0
     orders = []
-    redeem_id, redeem_amount = None, None
+    redeem_id, redeem_amount, redeem_market = None, 0, ""
     for market_name, size in arb.items():
         new_orders = get_orders_to_fulfill_size(state, market_name, size)
         orders.extend(new_orders)
         if len(market_name) == agg_market_name_len:
-            # breakpoint()
             redeem_id = new_orders[0][0]
+            redeem_market = market_name
             if size < 0:
-                redeem_amount = max(order.price for _, order in new_orders)
+                redeem_amount = size
                 expected_profit += sum(order.price * order.size for _, order in new_orders)
             else:
-                redeem_amount = min(order.price for _, order in new_orders)
+                redeem_amount = size
                 expected_profit -= sum(order.price * order.size for _, order in new_orders)
-    if expected_profit - transaction_fee > 0:
-        logger.info(f"executing trade for expected profit {expected_profit}, {redeem_id}, {redeem_amount}")
+    if expected_profit - transaction_fee - 2 > 0:
+        redeem_amount += 0.51
+        logger.info(f"executing in market {redeem_market} for +0.51 {expected_profit}, {redeem_amount}")
+        client.redeem(redeem_id, redeem_amount)
+    elif expected_profit - transaction_fee > 0:
+        logger.info(f"executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
         client.redeem(redeem_id, redeem_amount)
     else:
-        logger.info(f"not executing trade for expected profit {expected_profit}, {redeem_id}, {redeem_amount}")
+        logger.info(f"not executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
 
 async def arbs_bot(
     client: TradingClient,
@@ -94,6 +89,7 @@ async def arbs_bot(
     # 100/s rate limit: 100 / 7 = 14x/s max runs
     # TOOD: try pulling state here if we hit ratelimits too often
     while True:
+        time.sleep(1)
         state = client.state()
         tasks = [run_arb_if_profitable(state, client, arb) for arb in arbs]
         await asyncio.gather(*tasks)
