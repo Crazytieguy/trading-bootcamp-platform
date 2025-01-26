@@ -17,43 +17,66 @@ load_dotenv()
 
 
 class Sector:
-    def __init__(self, index: str, underlying: list[str], composition: list[int]):
-        self.index = index
+    def __init__(self, etf: str, underlying: list[str], composition: list[int]):
+        self.etf = etf
         self.underlying = underlying
         self.composition = composition
 
-    def ratio(self, underlying):
+    def ratio(self, asset):
         """
         ratio from given underlying to index
         i.e. for a 2,1,4 index composition, the first asset has a ratio of 2
         """
-        return self.composition[self.underlying.index(underlying)]
+        if asset == self.etf:
+            return 1
+        return self.composition[self.underlying.index(asset)]
 
     def calculate_min_sizes(self, market_data: pd.DataFrame):
         """
         calculate the minimum size of the arb based on the lowest individual asset size
+        Side.BID: sell underlying assets, buy index
+        Side.OFFER: sell index, buy underlying assets
         """
-        # get orders for each asset
-        orders = {}
-        orders[self.index] = market_data[self.index].orders
-        for asset in self.underlying:
-            orders[asset] = market_data[asset].size
-
         # find the minimum bid and offer sizes
-        min_bid_size = self.index
-        min_offer_size = self.index
-        for asset, sizes_list in orders:
-            if sizes_list[0] < orders[self.index][min_size]:
-                min_size = asset
+        scaled_bid_sizes, scaled_offer_sizes = {}, {}
+        for asset in self.underlying:
+            bid_size, offer_size = market_data[asset]['latest_bid_size'], market_data[asset]['offer_size']
+            scaled_bid_sizes[asset] = bid_size * self.ratio(asset)
+            scaled_offer_sizes[asset] = offer_size * self.ratio(asset)
 
-        return orders[self.index][min_size]
+        etf_bid_size, etf_offer_size  = market_data[self.etf].latest_bid_size, market_data[self.etf].latest_offer_size
 
-    def calculate_profit(self, market_data: pd.DataFrame, direction: Side):
+        min_size_bid_asset, min_size_offer_asset = self.etf, self.etf
+        for size, asset in scaled_bid_sizes:
+            if size < min_size_bid_asset:
+                min_size_bid_asset = asset
+        for size, asset in scaled_offer_sizes:
+            if size < min_size_offer_asset:
+                min_size_offer_asset = asset
+
+        # truncated size for each direction
+        bid_sizes = {asset: size * (self.ratio(min_size_bid_asset) / self.ratio(asset)) for asset, size in scaled_bid_sizes.items()}
+
+
+    def get_direction(self, market_data: pd.DataFrame) -> tuple[Side, float]:
         """
         Side.BID: sell underlying assets, buy index
         Side.OFFER: sell index, buy underlying assets
         """
-        pass
+        total_bid_profit = 0 + market_data[self.etf].latest_bid_price
+        total_offer_profit = 0 - market_data[self.etf].latest_offer_price
+        for asset in self.underlying:
+            # when we are long the etf, we want to sell the underlying assets
+            total_bid_profit = total_bid_profit - market_data[asset].latest_bid_price * self.ratio(asset)
+
+            # when we are short the etf, we want to buy the underlying assets
+            total_offer_profit = total_offer_profit + market_data[asset].latest_offer_price * self.ratio(asset)
+
+        if total_bid_profit > total_offer_profit:
+            return Side.BID, total_bid_profit
+        else:
+            return Side.OFFER, total_offer_profit
+
 
 
 sector_market_ids = {
@@ -63,7 +86,7 @@ sector_market_ids = {
 }
 
 sector_to_arbs = {
-    "abc": Sector(index="abc", underlying=["a", "b", "c"], composition=[2, 2, 2]),
+    "abc": Sector(etf="abc", underlying=["a", "b", "c"], composition=[2, 2, 2]),
 }
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
