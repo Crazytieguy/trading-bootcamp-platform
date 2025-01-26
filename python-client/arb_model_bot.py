@@ -16,20 +16,39 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-class SectorArbs:
+class Sector:
     def __init__(self, index: str, underlying: list[str], composition: list[int]):
         self.index = index
         self.underlying = underlying
         self.composition = composition
 
-    def calculate_min_size(self, market_data: pd.DataFrame):
+    def ratio(self, underlying):
+        """
+        ratio from given underlying to index
+        i.e. for a 2,1,4 index composition, the first asset has a ratio of 2
+        """
+        return self.composition[self.underlying.index(underlying)]
+
+    def calculate_min_sizes(self, market_data: pd.DataFrame):
         """
         calculate the minimum size of the arb based on the lowest individual asset size
         """
+        # get orders for each asset
+        orders = {}
+        orders[self.index] = market_data[self.index].orders
+        for asset in self.underlying:
+            orders[asset] = market_data[asset].size
 
-        pass
+        # find the minimum bid and offer sizes
+        min_bid_size = self.index
+        min_offer_size = self.index
+        for asset, sizes_list in orders:
+            if sizes_list[0] < orders[self.index][min_size]:
+                min_size = asset
 
-    def calculate_sizes(self, market_data: pd.DataFrame, direction: Side):
+        return orders[self.index][min_size]
+
+    def calculate_profit(self, market_data: pd.DataFrame, direction: Side):
         """
         Side.BID: sell underlying assets, buy index
         Side.OFFER: sell index, buy underlying assets
@@ -44,7 +63,7 @@ sector_market_ids = {
 }
 
 sector_to_arbs = {
-    "abc": SectorArbs(index="abc", underlying=["a", "b", "c"], composition=[2, 2, 2]),
+    "abc": Sector(index="abc", underlying=["a", "b", "c"], composition=[2, 2, 2]),
 }
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
@@ -99,7 +118,6 @@ def get_market_data(state, market_id: str):
     # get orderbook
     market_name = state.market_id_to_name[market_id]
     orders = state.markets[market_id].orders
-    
     if not orders:
         logger.info(f"No market data available for market {market_name}")
     
