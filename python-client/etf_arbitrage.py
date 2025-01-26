@@ -163,7 +163,7 @@ def arbitrage_etf(
                     size=size,
                     price=etf_prices.offer,
                 )
-            )
+            )]
 
         # sell components
         offers = []
@@ -257,8 +257,6 @@ def arbitrage_etf_bot(
         # if market is None:
         #     logger.info(f"No market data available for market {market_id}")
         #     continue
-
-
         arbitrage_etf(client, portfolio, etf_name, dry=dry, max_size=max_size)
 
 
