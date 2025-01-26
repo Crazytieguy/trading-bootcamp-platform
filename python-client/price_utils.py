@@ -1,6 +1,7 @@
 from metagame import TradingClient
 from pydantic import BaseModel, ConfigDict
 
+
 side_dict= {1:"bid", 2:"offer"}
 
 def get_prices(market):
@@ -9,7 +10,7 @@ def get_prices(market):
         bid = max((order for order in market.orders if order.side==1), key=lambda x: -x.price)
         bid_price = bid.price
         bid_size = bid.size
-    except IndexError:
+    except (IndexError, ValueError):
         bid_price = -float("inf")
         bid_size = 0
     # lowest offer
@@ -17,7 +18,7 @@ def get_prices(market):
         offer = min((order for order in market.orders if order.side==2), key=lambda x: x.price)
         offer_price = offer.price
         offer_size = offer.size
-    except IndexError:
+    except (IndexError, ValueError):
         offer_price = float("inf")
         offer_size = 0
     return {"bid": bid_price, "offer": offer_price, "bid_size": bid_size, "offer_size": offer_size}
@@ -29,7 +30,7 @@ def get_market_prices(client, /, market_name: str | None = None, market_id: int 
         market_id = state.market_name_to_id.get(market_name)
     market = state.markets[market_id]
     return get_prices(market)
-from pydantic import BaseModel, ConfigDict
+
 
 class MarketPrices(BaseModel):
     id: int
@@ -65,7 +66,7 @@ class MarketPrices(BaseModel):
                             )
     
     def __mul__(self, other:float|int):
-        return MarketPrices(id=-1, name=self.name + ' * ' + str(other), 
+        return MarketPrices(id=self.id, name=self.name + ' * ' + str(other), 
                             bid=self.bid * other, 
                             offer=self.offer * other,
                             bid_size = self.bid_size * other,

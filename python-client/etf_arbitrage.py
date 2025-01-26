@@ -21,7 +21,7 @@ def main(
     jwt: Annotated[str, typer.Option(envvar="JWT")],
     api_url: Annotated[str, typer.Option(envvar="API_URL")],
     act_as: Annotated[int, typer.Option(envvar="ACT_AS")],
-    market_name: str,
+    # market_name: str,
     spread: float = 1.0,
     size: float = 1.0,
     fade_per_order: float = 1.0,
@@ -30,7 +30,7 @@ def main(
     with TradingClient(api_url, jwt, act_as) as client:
         arbitrage_etf_bot(
             client,
-            market_name=market_name,
+            # market_name=market_name,
             spread=spread,
             size=size,
             fade_per_order=fade_per_order,
@@ -137,7 +137,7 @@ def arbitrage_etf(portfolio:list[MarketPrices], etf_name:str, max_size:float=1.0
 def arbitrage_etf_bot(
     client: TradingClient,
     *,
-    market_name: str,
+    # market_name: str,
     spread: float,
     size: float,
     fade_per_order: float,
@@ -145,11 +145,12 @@ def arbitrage_etf_bot(
     dry: bool = False,
 ) -> None:
     # Clear out any existing orders
-    market_id = client.state().market_name_to_id[market_name]
-    client.out(market_id)
-    logger.info(f"Starting market maker bot for market {market_name}")
+    # market_id = client.state().market_name_to_id[market_name]
+
 
     etf_name = "def_tradewars"
+    logger.info(f"Starting market maker bot for market {etf_name}")
+
 
     portfolio = [PComponent.from_name(client, name="delta_tradewars", weight=1), 
                 PComponent.from_name(client, name="echo_tradewars", weight=1), 
@@ -159,6 +160,7 @@ def arbitrage_etf_bot(
         sleep(1)
         state = client.state()
         market = state.markets.get(market_id)
+        client.out(market_id)
         if market is None:
             logger.info(f"No market data available for market {market_id}")
             continue
