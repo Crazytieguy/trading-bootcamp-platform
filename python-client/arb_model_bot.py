@@ -113,9 +113,9 @@ def get_market_data(state, market_id: str):
     if not offers:
         logger.info(f"No offers available for market {market_name}")
 
-    best_bid = max(bids, key=lambda x: x.price)
-    best_offer = min(offers, key=lambda x: x.price)
-    spread = best_offer.price - best_bid.price
+    latest_bid = max(bids, key=lambda x: x.transaction_id)
+    latest_offer = max(offers, key=lambda x: x.transaction_id)
+    spread = latest_bid.price - latest_offer.price
 
     pass
 
