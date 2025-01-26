@@ -37,7 +37,7 @@ def get_orders_to_fulfill_size(state, market_name, size):
             if size < order.size:
                 order.price /= (order.size / size)
                 order.size = size
-            size += order.size
+            size -= order.size
             orders.append((market_id, order))
     else:
         top_bids = [
@@ -49,14 +49,34 @@ def get_orders_to_fulfill_size(state, market_name, size):
             if size < order.size:
                 order.price /= (order.size / size)
                 order.size = size
-            size -= order.size
+            size += order.size
             orders.append((market_id, order))
     return orders
+
+def fill_orders(client, orders):
+    bids = []
+    offers = []
+    for market_id, order in orders:
+        client.out(market_id)
+        if order.side == Side.OFFER:
+            bids.append(
+                ClientMessage(
+                    create_order=CreateOrder(market_id, order.price, order.size, Side.BID)
+                )
+            )
+        else:
+            bids.append(
+                ClientMessage(
+                    create_order=CreateOrder(market_id, order.price, order.size, Side.OFFER)
+                )
+            )
+    client.request_many(bids + offers)
 
 async def run_arb_if_profitable(state, client, arb: dict):
     # TODO
     # +/- epsilon: .51
     expected_profit = 0
+    orders = []
     redeem_id, redeem_amount, redeem_market = None, 0, ""
     for market_name, size in arb.items():
         new_orders = get_orders_to_fulfill_size(state, market_name, size)
@@ -69,13 +89,15 @@ async def run_arb_if_profitable(state, client, arb: dict):
             expected_profit += sum(order.price * order.size for _, order in new_orders)
         else:
             expected_profit -= sum(order.price * order.size for _, order in new_orders)
+        orders.append(new_orders)
     # if expected_profit - transaction_fee - 2 > 0:
     #     redeem_amount += 0.51
     #     logger.info(f"executing in market {redeem_market} for +0.51 {expected_profit}, {redeem_amount}")
     #     client.redeem(redeem_id, redeem_amount)
-    elif expected_profit - transaction_fee > 0:
+    if expected_profit - transaction_fee > 0:
+        fill_orders(client, orders)
         logger.info(f"executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
-        client.redeem(redeem_id, redeem_amount)
+        # client.redeem(redeem_id, redeem_amount)
     else:
         logger.info(f"not executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}")
 
@@ -91,7 +113,7 @@ async def arbs_bot(
     # 100/s rate limit: 100 / 7 = 14x/s max runs
     # TOOD: try pulling state here if we hit ratelimits too often
     while True:
-        time.sleep(1)
+        time.sleep(2)
         state = client.state()
         tasks = [run_arb_if_profitable(state, client, arb) for arb in arbs]
         await asyncio.gather(*tasks)
