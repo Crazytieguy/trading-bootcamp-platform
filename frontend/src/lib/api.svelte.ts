@@ -84,7 +84,7 @@ export const accountName = (accountId: number | null | undefined, me: string = '
 		: `${prefix}${account?.name || 'Unnamed account'}`;
 };
 
-const allowedUsers = ['Yoav Tzfati', 'Stefan Lance', 'Verner Dsouza', 'Allen Kang'];
+const allowedUsers = ['Yoav Tzfati', 'Stefan Lance', 'Verner Dsouza', 'Allen Kang', 'Itamar Reif'];
 
 const authenticate = async () => {
 	startConnectionToast();
