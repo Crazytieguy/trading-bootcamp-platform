@@ -38,13 +38,16 @@ def main(
     # market_name: str,
     spread: float = 1.0,
     size: float = 1.0,
+    freq: float = 0.25,
     fade_per_order: float = 1.0,
     prior: Optional[float] = None,
 ):
+    print(f"Starting, size = {size}, freq = {freq} s")
     with TradingClient(api_url, jwt, act_as) as client:
         arbitrage_etf_bot(
             client,
             # etf_name=market_name,
+            freq = freq,
             spread=spread,
             max_size=size,
             fade_per_order=fade_per_order,
@@ -215,6 +218,7 @@ def arbitrage_etf_bot(
     # etf_name: str = "def_tradewars",
     spread: float,
     max_size: float,
+    freq: float,
     fade_per_order: float,
     prior: Optional[float] = None,
     dry: bool = False,
@@ -235,7 +239,7 @@ def arbitrage_etf_bot(
         while True:
             if client.state().portfolio.available_balance < 200:
                 raise Exception("Not enough balance")
-            sleep(.4)
+            sleep(freq)
             # state = client.state()
             # market = state.markets.get(market_id)
             # client.out(market_id)
