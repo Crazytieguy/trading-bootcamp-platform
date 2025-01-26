@@ -7,8 +7,7 @@ from typing import Annotated
 import typer
 from dotenv import load_dotenv
 
-import constants
-from constants import agg_market_name_len, arbs, transaction_fee
+from constants import agg_market_name_len, arbs
 from metagame import TradingClient
 from metagame.websocket_api import ClientMessage, CreateOrder, Side
 
@@ -93,9 +92,9 @@ def run_arb_if_profitable(state, client, arb: dict):
         # size *= constants.multiplier
         new_orders = get_orders_to_fulfill_size(state, market_name, size)
         # orders.extend(new_orders)
-        # if len(market_name) == agg_market_name_len:
+        if len(market_name) == agg_market_name_len:
             # redeem_id = new_orders[0][0]
-            # redeem_market = market_name
+            redeem_market = market_name
             # redeem_amount = size
             # redeem_market_id = state.market_name_to_id[market_name]
         if size < 0:
@@ -109,12 +108,12 @@ def run_arb_if_profitable(state, client, arb: dict):
     #     client.redeem(redeem_id, redeem_amount)
     if expected_profit > 0:
         logger.info(
-            f"{datetime.now()}: executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}"
+            f"{datetime.now()}: executing in market {redeem_market} for expected profit {expected_profit}"
         )
         fill_orders(client, orders)
     else:
         logger.info(
-            f"{datetime.now()}: not executing in market {redeem_market} for expected profit {expected_profit}, {redeem_amount}"
+            f"{datetime.now()}: not executing in market {redeem_market} for expected profit {expected_profit}"
         )
         # current_position = next(
         #     (
