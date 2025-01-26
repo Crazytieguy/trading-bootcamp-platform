@@ -215,10 +215,14 @@ class ArbFinder:
 
     def execute_transactions(self, buy_volumes, sell_volumes, buy_prices, ask_prices):
         for i, market_id in enumerate(self.tradable_markets):
-            buy_volume = buy_volumes[i]
-            sell_volume = sell_volumes[i]
-            buy_price = buy_prices[i]
-            sell_price = ask_prices[i]
+            buy_volume = float(buy_volumes[i])
+            sell_volume = float(sell_volumes[i])
+            buy_price = float(buy_prices[i])
+            sell_price = float(ask_prices[i])
+
+            # round all volumes to 2 decimal places
+            buy_volume = round(buy_volume, 2)
+            sell_volume = round(sell_volume, 2)
 
             if buy_volume > 0:
                 buy_order = ClientMessage(
@@ -244,17 +248,21 @@ class ArbFinder:
 
 
 if __name__ == "__main__":
-    tradable_markets = [1, 2, 3]
-    arbs = np.array([[0, 1, -1], [0, 1, 1]])
+    # .                  A   B.  C   D.  E.  F.  G.  H.  I. bo.  abc, def, ghi
+    tradable_markets = [ 5,  6,  7,  8,  9,  10, 11, 12, 13, 14,  15, 16,  17]
+    arbs = np.array([  [ 2,  2,  2,  0,  0,  0,  0,  0,  0,  0,   -1,  0,  0],
+                       [ 0,  0,  0,  1,  1,  4,  0,  0,  0,  0,    0, -1,  0],
+                       [ 0,  0,  0,  0,  0,  0,  3,  2,  1,  0,    0,  0, -1],
+        ]
+    )
     arbs = np.vstack([arbs, -arbs])
     arb_finder = ArbFinder(tradable_markets, arbs)
+
     while True:
         arb_opportunity = arb_finder.find_arb_opportunity()
 
         if arb_opportunity is None:
             print("No arb opportunity found!")
-            time.sleep(1)
-            break
         else:
             print("Arb opportunity found!")
             print(arb_opportunity)
@@ -273,8 +281,17 @@ if __name__ == "__main__":
                 sells = sells * ratio
 
             print("Buying: ", buys)
-            print("Buy Prices: ", arb_opportunity["Buy Levels"])
+            # print("Buy Prices: ", arb_opportunity["Buy Levels"])
             print("Selling: ", sells)
-            print("Sell Prices: ", arb_opportunity["Sell Levels"])
+            # print("Sell Prices: ", arb_opportunity["Sell Levels"])
 
-        break
+            m = 0.5
+
+            arb_finder.execute_transactions(
+                m * buys,
+                m * sells,
+                arb_opportunity["Buy Levels"],
+                arb_opportunity["Sell Levels"],
+            )
+
+        time.sleep(0.5)
