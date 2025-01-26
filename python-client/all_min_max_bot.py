@@ -59,9 +59,6 @@ def all_markets(client: TradingClient, *, size: float):
         "golf_tradewars",
         "india_tradewars",
         "hotel_tradewars",
-        "abc_tradewars",
-        "def_tradewars",
-        "ghi_tradewars",
     ]:
         try:
             min_max_bot(client, market_name=market, size=size)
