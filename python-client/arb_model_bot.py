@@ -83,7 +83,7 @@ def arb_model_bot(
             state = client.state()
             # 1. collect market data for all constituent markets
             for market_id in sector_market_ids[sector]:
-                market_data = get_market_data(state.markets.get(market_id), market_id)
+                market_data = get_market_data(state, market_id)
                 # append this to the dataframe somehow
 
             # 2. calculate arbs
