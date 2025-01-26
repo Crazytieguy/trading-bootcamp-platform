@@ -1,5 +1,6 @@
 # neg: sell, pos: buy
-agg_market_name_len = 6
+agg_market_name_len = 13
+transaction_fee = 1
 arbs = [
     {
         'alfa_tradewars': 0.2,
