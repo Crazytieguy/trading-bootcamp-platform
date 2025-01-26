@@ -14,18 +14,19 @@ from metagame.websocket_api import ClientMessage, CreateOrder, Side
 load_dotenv()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
-def round(n: float, up: bool=False):
-    import math
-    if up:
-        return math.ceil(n * 100) / 100
-    return math.floor(n * 100) / 100
+# def round(n: float, up: bool=False):
+#     import math
+#     if up:
+#         return math.ceil(n * 100) / 100
+#     return math.floor(n * 100) / 100
 
 # TODO: ensure position is not too far from 0
 def get_orders_to_fulfill_size(state, market_name, size):
     market_id = state.market_name_to_id[market_name]
     market = state.markets.get(market_id)
     orders = []
-    cutoff = size * 2 * 10
+    epsilon = 10
+    cutoff = size * 2 * epsilon
     top_offers = [
         order
         for order in
