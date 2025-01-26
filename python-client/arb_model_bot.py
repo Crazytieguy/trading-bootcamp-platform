@@ -143,15 +143,16 @@ def get_market_data(state, market_id: str):
     if latest_bid and latest_offer:
         spread = latest_bid.price - latest_offer.price
         data = {
-            "market_id": market_id,
-            "market_name": market_name,
-            "latest_bid_price": latest_bid.price,
-            "latest_offer_price": latest_offer.price,
-            "spread": spread,
-            "bids": bids,
-            "offers": offers,
+            "market_id": {                
+                "market_name": market_name,
+                "latest_bid_price": latest_bid.price,
+                "latest_offer_price": latest_offer.price,
+                "spread": spread,
+                "bids": bids,
+                "offers": offers,
+            }
         }
-        df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
+        df = pd.concat([df, pd.DataFrame([data])])
 
     pass
 
