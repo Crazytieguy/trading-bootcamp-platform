@@ -1,56 +1,18 @@
+import asyncio
 import logging
 from typing import Annotated
-import asyncio
 
 import typer
 from dotenv import load_dotenv
+
+from constants import arbs
 from metagame import TradingClient
-from metagame.websocket_api import Side, CreateOrder, ClientMessage
+from metagame.websocket_api import ClientMessage, CreateOrder, Side
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 load_dotenv()
 app = typer.Typer(pretty_exceptions_show_locals=False)
-
-# neg: sell, pos: buy
-arbs = [
-    {
-        'Alpha': 0.2,
-        'Beta': 0.2,
-        'Charlie': 0.2,
-        'ABC': -0.1
-    },
-    {
-        'Alpha': -0.2,
-        'Beta': -0.2,
-        'Charlie': -0.2,
-        'ABC': 0.1
-    },
-    {
-        'Delta': 0.1,
-        'Epsilon': 0.1,
-        'Foxtrot': 0.4,
-        'DEF': -0.1
-    },
-    {
-        'Delta': -0.1,
-        'Epsilon': -0.1,
-        'Foxtrot': -0.4,
-        'DEF': 0.1
-    },
-    {
-        'Golf': 0.3,
-        'Hotel': 0.2,
-        'India': 0.1,
-        'GHI': -0.1
-    },
-    {
-        'Golf': -0.3,
-        'Hotel': -0.2,
-        'India': -0.1,
-        'GHI': 0.1
-    }
-]
 
 def round(n: float, up: bool=False):
     import math

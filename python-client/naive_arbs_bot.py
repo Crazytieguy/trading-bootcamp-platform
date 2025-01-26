@@ -5,6 +5,7 @@ from typing import Annotated
 import typer
 from dotenv import load_dotenv
 
+from constants import arbs
 from metagame import TradingClient
 from metagame.websocket_api import ClientMessage, CreateOrder, Side
 
@@ -13,45 +14,6 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
-# neg: sell, pos: buy
-arbs = [
-    {
-        'alphg': 0.2,
-        'beta': 0.2,
-        'charlie': 0.2,
-        'ABC': -0.1
-    },
-    {
-        'alphg': -0.2,
-        'beta': -0.2,
-        'charlie': -0.2,
-        'ABC': 0.1
-    },
-    {
-        'delta': 0.1,
-        'epsilon': 0.1,
-        'foxtrot': 0.4,
-        'DEF': -0.1
-    },
-    {
-        'delta': -0.1,
-        'epsilon': -0.1,
-        'foxtrot': -0.4,
-        'DEF': 0.1
-    },
-    {
-        'golf': 0.3,
-        'hotel': 0.2,
-        'india': 0.1,
-        'GHI': -0.1
-    },
-    {
-        'golf': -0.3,
-        'hotel': -0.2,
-        'india': -0.1,
-        'GHI': 0.1
-    }
-]
 
 # def round(n: float, up: bool=False):
 #     import math
