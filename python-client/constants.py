@@ -2,39 +2,39 @@
 agg_market_name_len = 6
 arbs = [
     {
-        'alpha_tw': 0.2,
-        'bravo_tw': 0.2,
-        'charlie_tw': 0.2,
-        'abc': -0.1
+        'alfa_tradewars': 0.2,
+        'bravo_tradewars': 0.2,
+        'charlie_tradewars': 0.2,
+        'abc_tradewars': -0.1
     },
     {
-        'alpha_tw': -0.2,
-        'bravo_tw': -0.2,
-        'charlie_tw': -0.2,
-        'abc': 0.1
+        'alfa_tradewars': -0.2,
+        'bravo_tradewars': -0.2,
+        'charlie_tradewars': -0.2,
+        'abc_tradewars': 0.1
     },
     {
-        'delta_tw': 0.1,
-        'echo_tw': 0.1,
-        'foxtrot_tw': 0.4,
-        'def': -0.1
+        'delta_tradewars': 0.1,
+        'echo_tradewars': 0.1,
+        'foxtrot_tradewars': 0.4,
+        'def_tradewars': -0.1
     },
     {
-        'delta_tw': -0.1,
-        'echo_tw': -0.1,
-        'foxtrot_tw': -0.4,
-        'def': 0.1
+        'delta_tradewars': -0.1,
+        'echo_tradewars': -0.1,
+        'foxtrot_tradewars': -0.4,
+        'def_tradewars': 0.1
     },
     {
-        'golf_tw': 0.3,
-        'hotel_tw': 0.2,
-        'india_tw': 0.1,
-        'ghi': -0.1
+        'golf_tradewars': 0.3,
+        'hotel_tradewars': 0.2,
+        'india_tradewars': 0.1,
+        'ghi_tradewars': -0.1
     },
     {
-        'golf_tw': -0.3,
-        'hotel_tw': -0.2,
-        'india_tw': -0.1,
-        'ghi': 0.1
+        'golf_tradewars': -0.3,
+        'hotel_tradewars': -0.2,
+        'india_tradewars': -0.1,
+        'ghi_tradewars': 0.1
     }
 ]
