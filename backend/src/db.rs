@@ -1054,33 +1054,29 @@ impl DB {
         }
         drop(potential_fills);
 
-        let order = if size_remaining > Decimal::ZERO {
-            let size_remaining = Text(size_remaining);
-            let price = Text(price);
-            let order = sqlx::query_as!(
-                    Order,
-                    r#"INSERT INTO "order" (market_id, owner_id, transaction_id, size, price, side) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, market_id, owner_id, transaction_id, size as "size: _", price as "price: _", side as "side: _""#,
-                    market_id,
-                    owner_id,
-                    transaction_info.id,
-                    size_remaining,
-                    price,
-                    side
-                )
-                .fetch_one(transaction.as_mut())
-                .await?;
-            sqlx::query!(
-                r#"INSERT INTO order_size (order_id, transaction_id, size) VALUES (?, ?, ?)"#,
-                order.id,
+        let size_remaining = Text(size_remaining);
+        let price = Text(price);
+        let order = sqlx::query_as!(
+                Order,
+                r#"INSERT INTO "order" (market_id, owner_id, transaction_id, size, price, side) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, market_id, owner_id, transaction_id, size as "size: _", price as "price: _", side as "side: _""#,
+                market_id,
+                owner_id,
                 transaction_info.id,
-                size_remaining
+                size_remaining,
+                price,
+                side
             )
-            .execute(transaction.as_mut())
+            .fetch_one(transaction.as_mut())
             .await?;
-            Some(order)
-        } else {
-            None
-        };
+        sqlx::query!(
+            r#"INSERT INTO order_size (order_id, transaction_id, size) VALUES (?, ?, ?)"#,
+            order.id,
+            transaction_info.id,
+            size_remaining
+        )
+        .execute(transaction.as_mut())
+        .await?;
+
         update_exposure_cache(
             &mut transaction,
             false,
@@ -1088,9 +1084,9 @@ impl DB {
                 id: 0,
                 owner_id,
                 market_id,
-                size_remaining,
-                size_filled: size - size_remaining,
-                price,
+                size_remaining: size_remaining.0,
+                size_filled: size - size_remaining.0,
+                price: price.0,
                 side: side.0,
             },
         )
@@ -1643,7 +1639,7 @@ pub enum CreateOrderStatus {
     InsufficientFunds,
     AccountNotFound,
     Success {
-        order: Option<Order>,
+        order: Order,
         fills: Vec<OrderFill>,
         trades: Vec<Trade>,
         transaction_info: TransactionInfo,
@@ -2045,10 +2041,7 @@ mod tests {
         let db = DB { pool };
 
         let order_status = db.create_order(1, 1, dec!(15), dec!(1), Side::Bid).await?;
-        let CreateOrderStatus::Success {
-            order: Some(order), ..
-        } = order_status
-        else {
+        let CreateOrderStatus::Success { order, .. } = order_status else {
             panic!("expected success order");
         };
 
@@ -2096,10 +2089,7 @@ mod tests {
         let order_status = db
             .create_order(1, 1, dec!(15), dec!(1), Side::Offer)
             .await?;
-        assert_matches!(
-            order_status,
-            CreateOrderStatus::Success { order: Some(_), .. }
-        );
+        assert_matches!(order_status, CreateOrderStatus::Success { .. });
 
         let a_portfolio = db.get_portfolio(1).await?.unwrap();
         assert_eq!(a_portfolio.total_balance, dec!(100));
@@ -2148,13 +2138,7 @@ mod tests {
         let order_status = db
             .create_order(1, 2, dec!(11), dec!(0.5), Side::Offer)
             .await?;
-        let CreateOrderStatus::Success {
-            trades,
-            fills,
-            order: None,
-            ..
-        } = order_status
-        else {
+        let CreateOrderStatus::Success { trades, fills, .. } = order_status else {
             panic!("expected success with no order");
         };
         assert_eq!(trades.len(), 1);
@@ -2299,7 +2283,7 @@ mod tests {
         let CreateOrderStatus::Success {
             trades,
             fills,
-            order: Some(order),
+            order,
             ..
         } = order_status
         else {

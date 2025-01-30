@@ -559,20 +559,18 @@ async fn handle_client_message(
                         app_state.subscriptions.notify_portfolio(*user_id);
                     }
                     app_state.subscriptions.notify_portfolio(*acting_as);
-                    let order = order.map(|o| {
-                        let mut order = Order::from(o);
-                        order.sizes = vec![Size {
-                            transaction_id: order.transaction_id,
-                            size: order.size,
-                        }];
-                        order
-                    });
+                    let mut order = Order::from(order);
+                    order.sizes = vec![Size {
+                        transaction_id: order.transaction_id,
+                        size: order.size,
+                    }];
+
                     let msg = ServerMessage {
                         request_id,
                         message: Some(SM::OrderCreated(OrderCreated {
                             market_id: create_order.market_id,
                             account_id: *acting_as,
-                            order,
+                            order: Some(order),
                             fills: fills.into_iter().map(OrderFill::from).collect(),
                             trades: trades.into_iter().map(Trade::from).collect(),
                             transaction: Some(transaction_info.into()),
