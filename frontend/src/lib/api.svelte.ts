@@ -280,7 +280,7 @@ socket.onmessage = (event: MessageEvent) => {
 			return;
 		}
 
-		if (orderCreated.order) {
+		if (orderCreated.order?.size && orderCreated.order.size > 0) {
 			marketData.orders.push(
 				websocket_api.Order.toObject(orderCreated.order as websocket_api.Order, { defaults: true })
 			);
