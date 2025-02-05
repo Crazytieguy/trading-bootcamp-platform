@@ -63,7 +63,7 @@
 			</ul>
 			<ul class="flex justify-center gap-4">
 				<li>
-					<Button on:click={kinde.logout}>Log Out</Button>
+					<Button onclick={kinde.logout}>Log Out</Button>
 				</li>
 				<li>
 					<Theme />
