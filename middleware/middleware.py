@@ -63,6 +63,10 @@ def health_check():
                 "/market/<market_id>/trades",
                 "/market/<market_id>/orders",
                 "/portfolio",
+                "/market/<market_id>/last",
+                "/market/<market_id>/mid",
+                "/market/<market_id>/bid/<depth>",
+                "/market/<market_id>/offer/<depth>",
             ],
         }
     )
