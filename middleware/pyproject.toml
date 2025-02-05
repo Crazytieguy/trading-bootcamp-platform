@@ -1,0 +1,11 @@
+ 
+name = "middleware"
+version = "0.1.0"
+description = "Trading Bootcamp Middleware API"
+requires-python = ">=3.12"
+dependencies = [
+    "flask",
+    "python-dotenv",
+    "gunicorn",
+    "metagame"
+]

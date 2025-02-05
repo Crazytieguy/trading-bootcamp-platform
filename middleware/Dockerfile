@@ -2,18 +2,19 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install git
-RUN apt-get update && apt-get install -y git
+# Install git and curl
+RUN apt-get update && apt-get install -y git curl
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Copy the middleware code
+# Copy project files
+COPY pyproject.toml .
 COPY middleware.py .
 
-# Install the python-client package directly from GitHub
-RUN pip install git+https://github.com/tradingbootcamp/platform.git#subdirectory=python-client
+# Install dependencies using uv
+RUN uv pip install git+https://github.com/tradingbootcamp/platform.git#subdirectory=python-client
+RUN uv pip sync
 
 # Run using gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "middleware:app"]
