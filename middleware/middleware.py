@@ -141,6 +141,9 @@ def get_market_order(market_id, order_id):
     client = get_client_for_request()
     state = client.state()
     order = next((o for o in state.markets[market_id].orders if o.id == order_id), None)
+    if not order:
+        return jsonify({"error": "Cannot find order"}), 404
+
     return jsonify(order)
 
 
@@ -181,9 +184,7 @@ def get_market_midprice(market_id):
     best_bid = get_order_at_depth(market_id, state, Side.BID, 1)
     best_offer = get_order_at_depth(market_id, state, Side.OFFER, 1)
     if not best_bid or not best_offer:
-        return jsonify(
-            {"error": "Unable to calculate midprice - missing bid or offer"}
-        ), 400
+        return jsonify({"error": "Unable to calculate mid - missing bid or offer"}), 404
 
     return jsonify({"midprice": (best_bid.price + best_offer.price) / 2})
 
