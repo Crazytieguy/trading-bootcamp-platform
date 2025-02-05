@@ -106,12 +106,17 @@ def get_market_trades(market_id):
 
 @app.route("/market/<int:market_id>/orders", methods=["GET"])
 def get_market_orders(market_id):
+    client = get_client_for_request()
     state = client.state()
     orders = [
         {
             "id": order.id,
             "market_id": order.market_id,
-            "owner_id": order.owner_id,
+            "owner_id": order.owner_id
+            if order.owner_id == state.acting_as
+            else None,  # to do: show owner if we're not hiding ids
+            "self_id": state.user_id,
+            "acting_as": state.acting_as,
             "transaction_id": order.transaction_id,
             "price": order.price,
             "size": order.size,
