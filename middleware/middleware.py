@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from metagame import TradingClient
+from metagame.websocket_api import Side
 import os
 from dotenv import load_dotenv
 import logging
@@ -129,6 +130,68 @@ def get_market_orders(market_id):
         for order in state.markets[market_id].orders
     ]
     return jsonify(orders)
+
+
+@app.route("/market/<int:market_id>/orders/<int:order_id>", methods=["GET"])
+def get_market_order(market_id, order_id):
+    client = get_client_for_request()
+    state = client.state()
+    order = next((o for o in state.markets[market_id].orders if o.id == order_id), None)
+    return jsonify(order)
+
+
+def get_sorted_orders(market_id: int, state, side: Side):
+    orders = [o for o in state.markets[market_id].orders if o.side == side]
+    return sorted(
+        orders,
+        key=lambda x: (-x.price if side == Side.BID else x.price, x.transaction_id),
+    )
+
+
+def get_order_at_depth(market_id: int, state, side: Side, depth: int):
+    sorted_orders = get_sorted_orders(market_id, state, side)
+    return sorted_orders[depth - 1] if 0 < depth <= len(sorted_orders) else None
+
+
+@app.route("/market/<int:market_id>/bid/<int:depth>", methods=["GET"])
+def get_market_bid_by_depth(market_id, depth):
+    client = get_client_for_request()
+    state = client.state()
+    order = get_order_at_depth(market_id, state, Side.BID, depth)
+    return jsonify(order)
+
+
+@app.route("/market/<int:market_id>/offer/<int:depth>", methods=["GET"])
+def get_market_offer_by_depth(market_id, depth):
+    client = get_client_for_request()
+    state = client.state()
+    order = get_order_at_depth(market_id, state, Side.OFFER, depth)
+    return jsonify(order)
+
+
+@app.route("/market/<int:market_id>/mid", methods=["GET"])
+def get_market_midprice(market_id):
+    client = get_client_for_request()
+    state = client.state()
+
+    best_bid = get_order_at_depth(market_id, state, Side.BID, 1)
+    best_offer = get_order_at_depth(market_id, state, Side.OFFER, 1)
+    if not best_bid or not best_offer:
+        return jsonify(
+            {"error": "Unable to calculate midprice - missing bid or offer"}
+        ), 400
+
+    return jsonify({"midprice": (best_bid.price + best_offer.price) / 2})
+
+
+@app.route("/market/<int:market_id>/last", methods=["GET"])
+def get_market_last_trade(market_id):
+    client = get_client_for_request()
+    state = client.state()
+    trades = state.markets[market_id].trades
+    if not trades:
+        return jsonify({"error": "No trades found for this market"}), 404
+    return jsonify(trades[-1])
 
 
 @app.route("/portfolio", methods=["GET"])
