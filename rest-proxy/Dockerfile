@@ -8,4 +8,4 @@ COPY . .
 
 RUN uv sync --frozen --no-cache
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "middleware:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]

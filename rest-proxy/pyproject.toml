@@ -1,7 +1,7 @@
 [project]
-name = "middleware"
+name = "rest-proxy"
 version = "0.1.0"
-description = "Trading Bootcamp Middleware API"
+description = "Trading Bootcamp Rest Proxy"
 requires-python = ">=3.12"
 dependencies = [
     "flask",
