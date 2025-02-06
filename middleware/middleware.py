@@ -75,15 +75,7 @@ def health_check():
 @app.route("/markets", methods=["GET"])
 def get_markets():
     state = client.state()
-    markets = {
-        id: {
-            "name": market.definition.name,
-            "description": market.definition.description,
-            "min_settlement": market.definition.min_settlement,
-            "max_settlement": market.definition.max_settlement,
-        }
-        for id, market in state.markets.items()
-    }
+    markets = {id: market.definition.to_dict() for id, market in state.markets.items()}
     return jsonify(markets)
 
 
@@ -94,18 +86,9 @@ def get_market_trades(market_id):
         client.get_full_trade_history(market_id)
         state = client.state()
 
-    trades = [
-        {
-            "id": trade.id,
-            "market_id": trade.market_id,
-            "transaction_id": trade.transaction_id,
-            "price": trade.price,
-            "size": trade.size,
-            "buyer_id": trade.buyer_id,
-            "seller_id": trade.seller_id,
-        }
-        for trade in state.markets[market_id].trades
-    ]
+    trades = state.markets[market_id].trades
+    if not trades:
+        return jsonify({"error": "No trades found for this market"}), 404
     return jsonify(trades)
 
 
