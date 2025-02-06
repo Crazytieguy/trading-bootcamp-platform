@@ -9,10 +9,6 @@ RUN apt-get update && apt-get install -y git
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-
-# Install uv
-# RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
 # Install the python-client package directly from GitHub
 RUN pip install git+https://github.com/tradingbootcamp/platform.git#subdirectory=python-client
 
