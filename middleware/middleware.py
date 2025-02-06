@@ -34,21 +34,29 @@ except Exception as e:
 
 # Cache client instances
 @lru_cache(maxsize=100)
-def get_cached_client(jwt: str, act_as: int) -> TradingClient:
-    return TradingClient(api_url=os.environ["API_URL"], jwt=jwt, act_as=act_as)
+def get_cached_client(jwt: str) -> TradingClient:
+    return TradingClient(
+        api_url=os.environ["API_URL"],
+        jwt=jwt,
+        act_as=0,  # Default to acting as self
+    )
 
 
 def get_client_for_request():
     auth_header = request.headers.get("Authorization")
     if not auth_header:
-        return client  # fallback to default client
+        return jsonify({"error": "Authorization header is required"}), 401
 
     try:
-        jwt, act_as = auth_header.split("|")
-        return get_cached_client(jwt, int(act_as))
+        # Parse standard Bearer token format
+        if not auth_header.startswith("Bearer "):
+            raise ValueError("Invalid authorization header format")
+
+        jwt = auth_header[7:]  # Remove "Bearer " prefix
+        return get_cached_client(jwt)
     except Exception as e:
         logger.error(f"Error creating client: {e}")
-        return client
+        return jsonify({"error": "Invalid authorization"}), 401
 
 
 # Add basic health check endpoint
@@ -74,18 +82,25 @@ def health_check():
 
 @app.route("/markets", methods=["GET"])
 def get_markets():
-    state = client.state()
+    client_or_error = get_client_for_request()
+    if not isinstance(client_or_error, TradingClient):
+        return client_or_error  # Return the error response
+
+    state = client_or_error.state()
     markets = {id: market.definition.to_dict() for id, market in state.markets.items()}
     return jsonify(markets)
 
 
 @app.route("/market/<int:market_id>/trades", methods=["GET"])
 def get_market_trades(market_id):
-    client = get_client_for_request()
-    state = client.state()
+    client_or_error = get_client_for_request()
+    if not isinstance(client_or_error, TradingClient):
+        return client_or_error  # Return the error response
+
+    state = client_or_error.state()
     if not state.markets[market_id].hasFullTradeHistory:
-        client.get_full_trade_history(market_id)
-        state = client.state()
+        client_or_error.get_full_trade_history(market_id)
+        state = client_or_error.state()
 
     trades = state.markets[market_id].trades
     if not trades:
@@ -95,8 +110,11 @@ def get_market_trades(market_id):
 
 @app.route("/market/<int:market_id>/orders", methods=["GET"])
 def get_market_orders(market_id):
-    client = get_client_for_request()
-    state = client.state()
+    client_or_error = get_client_for_request()
+    if not isinstance(client_or_error, TradingClient):
+        return client_or_error  # Return the error response
+
+    state = client_or_error.state()
     orders = state.markets[market_id].orders
     if not orders:
         return jsonify({"error": "No orders found for this market"}), 404
@@ -105,12 +123,14 @@ def get_market_orders(market_id):
 
 @app.route("/market/<int:market_id>/orders/<int:order_id>", methods=["GET"])
 def get_market_order(market_id, order_id):
-    client = get_client_for_request()
-    state = client.state()
+    client_or_error = get_client_for_request()
+    if not isinstance(client_or_error, TradingClient):
+        return client_or_error  # Return the error response
+
+    state = client_or_error.state()
     order = next((o for o in state.markets[market_id].orders if o.id == order_id), None)
     if not order:
         return jsonify({"error": "Cannot find order"}), 404
-
     return jsonify(order)
 
 
@@ -129,37 +149,47 @@ def get_order_at_depth(market_id: int, state, side: Side, depth: int):
 
 @app.route("/market/<int:market_id>/bid/<int:depth>", methods=["GET"])
 def get_market_bid_by_depth(market_id, depth):
-    client = get_client_for_request()
-    state = client.state()
+    client_or_error = get_client_for_request()
+    if not isinstance(client_or_error, TradingClient):
+        return client_or_error  # Return the error response
+
+    state = client_or_error.state()
     order = get_order_at_depth(market_id, state, Side.BID, depth)
     return jsonify(order)
 
 
 @app.route("/market/<int:market_id>/offer/<int:depth>", methods=["GET"])
 def get_market_offer_by_depth(market_id, depth):
-    client = get_client_for_request()
-    state = client.state()
+    client_or_error = get_client_for_request()
+    if not isinstance(client_or_error, TradingClient):
+        return client_or_error  # Return the error response
+
+    state = client_or_error.state()
     order = get_order_at_depth(market_id, state, Side.OFFER, depth)
     return jsonify(order)
 
 
 @app.route("/market/<int:market_id>/mid", methods=["GET"])
 def get_market_midprice(market_id):
-    client = get_client_for_request()
-    state = client.state()
+    client_or_error = get_client_for_request()
+    if not isinstance(client_or_error, TradingClient):
+        return client_or_error  # Return the error response
 
+    state = client_or_error.state()
     best_bid = get_order_at_depth(market_id, state, Side.BID, 1)
     best_offer = get_order_at_depth(market_id, state, Side.OFFER, 1)
     if not best_bid or not best_offer:
         return jsonify({"error": "Unable to calculate mid - missing bid or offer"}), 404
-
     return jsonify({"midprice": (best_bid.price + best_offer.price) / 2})
 
 
 @app.route("/market/<int:market_id>/last", methods=["GET"])
 def get_market_last_trade(market_id):
-    client = get_client_for_request()
-    state = client.state()
+    client_or_error = get_client_for_request()
+    if not isinstance(client_or_error, TradingClient):
+        return client_or_error  # Return the error response
+
+    state = client_or_error.state()
     trades = state.markets[market_id].trades
     if not trades:
         return jsonify({"error": "No trades found for this market"}), 404
@@ -168,8 +198,11 @@ def get_market_last_trade(market_id):
 
 @app.route("/portfolio", methods=["GET"])
 def get_portfolio():
-    client = get_client_for_request()
-    state = client.state()
+    client_or_error = get_client_for_request()
+    if not isinstance(client_or_error, TradingClient):
+        return client_or_error  # Return the error response
+
+    state = client_or_error.state()
     if state.portfolio:
         return jsonify(
             {
