@@ -1,17 +1,12 @@
-# fly.toml app configuration file generated for middleware-api on 2025-02-04T19:22:18-05:00
+# fly.toml app configuration file generated for rest-proxy on 2025-02-06T14:37:31-05:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'middleware-api'
-primary_region = 'ewr'
+app = 'rest-proxy'
+primary_region = 'sjc'
 
 [build]
-  dockerfile = "Dockerfile"
-
-[env]
-  API_URL = 'wss://trading-bootcamp.fly.dev/api'
-  PORT = '8080'
 
 [http_service]
   internal_port = 8080
@@ -19,8 +14,9 @@ primary_region = 'ewr'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-  memory = '512mb'
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
