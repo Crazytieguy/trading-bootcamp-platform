@@ -81,6 +81,7 @@ def get_markets():
 
 @app.route("/market/<int:market_id>/trades", methods=["GET"])
 def get_market_trades(market_id):
+    client = get_client_for_request()
     state = client.state()
     if not state.markets[market_id].hasFullTradeHistory:
         client.get_full_trade_history(market_id)
