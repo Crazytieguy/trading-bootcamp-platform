@@ -24,7 +24,7 @@ try:
     client = TradingClient(
         api_url=os.environ["API_URL"],
         jwt=os.environ["JWT"],
-        act_as=int(os.environ["ACT_AS"]),
+        act_as=0,
     )
     logger.info("Successfully connected to trading client")
 except Exception as e:
