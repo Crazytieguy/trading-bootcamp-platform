@@ -13,6 +13,7 @@
 	import '../app.css';
 	import MarketLink from './marketLink.svelte';
 	import NavLink from './navLink.svelte';
+	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
 
 	let { children } = $props();
 	let sidebarOpen = $state(true);
@@ -83,17 +84,7 @@
 								onclick={() => (sidebarOpen = false)}
 								class="mb-2"
 							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									width="24"
-									height="24"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg
-								>
+								<ChevronLeft />
 							</Button>
 						</li>
 						<li class="order-1 text-lg">
@@ -110,17 +101,7 @@
 			</aside>
 		{:else}
 			<Button variant="ghost" size="icon" onclick={() => (sidebarOpen = true)} class="mt-8">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="24"
-					height="24"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
-				>
+				<ChevronRight />
 			</Button>
 		{/if}
 		{@render children()}
