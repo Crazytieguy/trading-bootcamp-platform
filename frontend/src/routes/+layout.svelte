@@ -20,7 +20,7 @@
 
 	onMount(async () => {
 		if (!(await kinde.isAuthenticated())) {
-			kinde.login();
+			kinde.register();
 		}
 	});
 </script>
