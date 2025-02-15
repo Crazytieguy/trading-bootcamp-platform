@@ -19,6 +19,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Table from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
+	import MarketPositions from '$lib/components/marketPositions.svelte';
 
 	let { marketData }: { marketData: MarketData } = $props();
 	let id = $derived(marketData.definition.id);
@@ -103,6 +104,7 @@
 					displayTransactionId !== undefined && 'min-h-screen'
 				)}
 			>
+				<MarketPositions {trades} />
 				<MarketTrades {trades} />
 				<MarketOrders {bids} {offers} {displayTransactionId} />
 			</div>
