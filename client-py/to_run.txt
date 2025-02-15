@@ -1,26 +1,21 @@
-python autores.py python naive_bot.py 119 --act-as c54bed88-ab82-4a27-bd9a-5c4983c496e4 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 120 --act-as c54bed88-ab82-4a27-bd9a-5c4983c496e4 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 121 --act-as c54bed88-ab82-4a27-bd9a-5c4983c496e4 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 122 --act-as c54bed88-ab82-4a27-bd9a-5c4983c496e4 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 123 --act-as c54bed88-ab82-4a27-bd9a-5c4983c496e4 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 124 --act-as c54bed88-ab82-4a27-bd9a-5c4983c496e4 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 125 --act-as c54bed88-ab82-4a27-bd9a-5c4983c496e4 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 126 --act-as c54bed88-ab82-4a27-bd9a-5c4983c496e4 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 127 --act-as c54bed88-ab82-4a27-bd9a-5c4983c496e4 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 128 --act-as c54bed88-ab82-4a27-bd9a-5c4983c496e4 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 129 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 130 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 131 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 132 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 133 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 134 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 135 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 136 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
-python autores.py python naive_bot.py 137 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 0.03 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 158 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 159 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 160 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 161 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 162 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 163 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 164 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 165 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 166 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 167 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 168 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 169 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 170 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 171 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 172 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 173 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 174 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 175 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
+python autores.py python naive_bot.py 176 --act-as 03f9e434-04bd-417f-a72c-a10ce88756a5 --max-size 3 --always-trade-max --stay-neutral --trade-offset 5 --seconds-per-trade 30
 
-python autores.py python trade_wars_maker.py 119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137 --act-as d6d3bf38-eeae-4544-87ed-b5a742bb3fc6 --fade-per-order 0.1 --spread 2 --size 0.01 --depth-fade-per-order 1 --depth 20
-
-python autores.py python trade_wars_auto.py 119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137 [5,3,6,6,3,1,1,3,3] pos_1.json 16:16:00 --mm-size 0.01 --act-as da569f5d-a13c-4cc4-af52-9b9fded71089
-python autores.py python trade_wars_auto.py 119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137 [11,9,7,9,5,10,3,8,10] pos_2.json 16:16:00 --mm-size 0.01 --act-as 38f682dd-4303-49f4-b118-61be6b87a134
-python autores.py python trade_wars_auto.py 119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137 [13,14,9,10,5,12,9,13,12] pos_3.json 16:16:00 --mm-size 0.01 --act-as 720a0744-5ae3-4aee-bf19-de4adca3da98
-python autores.py python trade_wars_auto.py 119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137 [17,17,10,10,16,15,20,20,18] pos_4.json 16:1:600 --mm-size 0.01 --act-as 121ff5cd-2d3d-46d2-a128-5304bc431505
+python autores.py python trade_wars_maker.py 158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176 --act-as d6d3bf38-eeae-4544-87ed-b5a742bb3fc6 --fade-per-order 0.1 --spread 2 --size 2 --depth-fade-per-order 1 --depth 10

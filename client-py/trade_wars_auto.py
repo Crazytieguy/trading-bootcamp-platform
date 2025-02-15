@@ -81,6 +81,7 @@ def run_market_makers(
     assert len(market_ids) == 19
 
     appetites = [0, 0, 0, 0]
+    has_traded = [0,0,0,0]
     while True:
         sleep(1)
         state = client.state()
@@ -107,8 +108,9 @@ def run_market_makers(
         
         round_index = int((now - tw_start_time) / round_time)
         time_in_round = now - tw_start_time - round_index * round_time
-        if time_in_round < round_time / 3:
+        if time_in_round < round_time / 2:
             appetites = [0, 0, 0, 0]
+            has_traded = [0,0,0,0]
             continue
 
         my_roll = dice[round_index]
@@ -122,6 +124,8 @@ def run_market_makers(
         
         to_trades = [(ev[i] - my_priors[i]) * mm_size*10 for i in range(4)]
         print("Trying to trade", to_trades)
+        to_trades = [to_trades[i] - has_traded[i] for i in range(4)]
+        print("After trades so far", to_trades)
         
         if random.random() < 0.1:
             appetites = [appetites[i] + mm_size for i in range(4)]
@@ -154,14 +158,16 @@ def run_market_makers(
                     continue
                 price = min(market.max_settlement, best_offer.price + 5)
                 side = Side.BID
-            else:  # Need to sell
+            elif to_trades[i] < 0:  # Need to sell
                 size = min(abs(to_trades[i]), best_bid.size)
                 if size > appetites[i]:
                     continue
                 price = max(market.min_settlement, best_bid.price - 5) 
                 side = Side.OFFER
                 size = -size  # Make size negative for sells
-
+            else:
+                continue
+            
             logger.info(
                 f"Market {my_ids[i]}: Placing {side.name} order, spread {spread}, size {size}, price {price}"
             )
@@ -173,7 +179,7 @@ def run_market_makers(
                 price=price,
             )
             client.out(my_ids[i])
-            to_trades[i] -= size
+            has_traded[i] += size
 
 
 

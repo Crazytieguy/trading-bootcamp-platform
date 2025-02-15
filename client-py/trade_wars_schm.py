@@ -167,7 +167,7 @@ def adjust_positions(
                     logger.info(f"No offers available for market {market_id}")
                     continue
                 best_order = min(orders, key=lambda x: x.price)
-                price = best_order.price + abs(required_change) * expected_depth_fade
+                price = best_order.price + 10 * expected_depth_fade
             else:
                 side = Side.OFFER
                 orders = [order for order in market.orders if order.side == Side.BID]
@@ -175,12 +175,12 @@ def adjust_positions(
                     logger.info(f"No bids available for market {market_id}")
                     continue
                 best_order = max(orders, key=lambda x: x.price)
-                price = best_order.price - abs(required_change) * expected_depth_fade
+                price = best_order.price - 10 * expected_depth_fade
 
             price = clamp(price)
 
             # Determine size to trade (capped at 0.01 for example)
-            trade_size = min(abs(required_change), 0.01)
+            trade_size = min(abs(required_change),10)
 
             logger.info(
                 f"Market {market_id}: Placing {'BID' if side == Side.BID else 'OFFER'} order, size {trade_size}, price {price}"
@@ -192,6 +192,7 @@ def adjust_positions(
                 size=trade_size,
                 price=price,
             )
+            sleep(0.5)
 
         if all_positions_reached:
             logger.info("All positions reached")
