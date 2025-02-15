@@ -53,7 +53,7 @@
 
 	function handleQuickOrder() {
 		const bestPrice =
-			$formData.side === 'BID' ? (offers[0]?.price ?? 0) - 0.01 : (bids[0]?.price ?? 0) + 0.01;
+			$formData.side === 'BID' ? (offers[0]?.price ?? 0) + 0.01 : (bids[0]?.price ?? 0) - 0.01;
 
 		$formData.price = bestPrice;
 
