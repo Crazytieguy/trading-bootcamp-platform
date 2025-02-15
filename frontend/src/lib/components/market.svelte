@@ -138,6 +138,7 @@
 			<div>
 				<CreateOrder
 					side={'BID'}
+					buttonId="BID"
 					marketId={id}
 					minSettlement={marketDefinition.minSettlement}
 					maxSettlement={marketDefinition.maxSettlement}
@@ -145,6 +146,7 @@
 				<br />
 				<CreateOrder
 					side={'OFFER'}
+					buttonId="OFFER"
 					marketId={id}
 					minSettlement={marketDefinition.minSettlement}
 					maxSettlement={marketDefinition.maxSettlement}
