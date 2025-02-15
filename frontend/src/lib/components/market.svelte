@@ -54,6 +54,16 @@
 	const lastPrice = $derived(trades[trades.length - 1]?.price || '');
 	const midPrice = $derived(getMidPrice(bids, offers));
 	const isRedeemable = $derived(marketDefinition.redeemableFor?.length);
+
+	const averagePosition = $derived(() => {
+		const indices = [78, 79, 80, 81, 82];
+		const positions = indices.map(
+			(index) =>
+				serverState.portfolio?.marketExposures?.find((me) => me.marketId === index)?.position ?? 0
+		);
+		const total = positions.reduce((acc, pos) => acc + pos, 0);
+		return positions.length ? total / positions.length : 0;
+	});
 </script>
 
 <div class="flex-grow py-8">
@@ -86,6 +96,7 @@
 							<Table.Head class="text-center">Last price</Table.Head>
 							<Table.Head class="text-center">Mid price</Table.Head>
 							<Table.Head class="text-center">Your Position</Table.Head>
+							<Table.Head class="text-center">Average Position (78-82)</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body class="text-center">
@@ -93,6 +104,7 @@
 							<Table.Cell class="pt-2">{lastPrice}</Table.Cell>
 							<Table.Cell class="pt-2">{midPrice}</Table.Cell>
 							<Table.Cell class="pt-2">{Number(position.toFixed(2))}</Table.Cell>
+							<Table.Cell class="pt-2">{Number(averagePosition().toFixed(2))}</Table.Cell>
 						</Table.Row>
 					</Table.Body>
 				</Table.Root>
