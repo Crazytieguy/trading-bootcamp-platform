@@ -86,7 +86,7 @@
 							<Table.Head class="text-center">Last price</Table.Head>
 							<Table.Head class="text-center">Mid price</Table.Head>
 							<Table.Head class="text-center">Your Position</Table.Head>
-							<Table.Head class="text-center">Avg Cost/Unit</Table.Head>
+							<Table.Head class="text-center">Our Avg Cost/Unit</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body class="text-center">
@@ -122,6 +122,14 @@
 		{#if marketDefinition.open && displayTransactionId === undefined}
 			<div>
 				<CreateOrder
+				side={'BID'}
+					marketId={id}
+					minSettlement={marketDefinition.minSettlement}
+					maxSettlement={marketDefinition.maxSettlement}
+				/>
+				<br/>
+				<CreateOrder
+				side={'OFFER'}
 					marketId={id}
 					minSettlement={marketDefinition.minSettlement}
 					maxSettlement={marketDefinition.maxSettlement}
