@@ -6,6 +6,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
 	import type { websocket_api } from 'schema-js';
+	import { onMount, onDestroy } from 'svelte';
 
 	let { bids, offers, displayTransactionId } = $props<{
 		bids: websocket_api.IOrder[];
