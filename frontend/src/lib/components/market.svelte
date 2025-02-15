@@ -86,6 +86,7 @@
 							<Table.Head class="text-center">Last price</Table.Head>
 							<Table.Head class="text-center">Mid price</Table.Head>
 							<Table.Head class="text-center">Your Position</Table.Head>
+							<Table.Head class="text-center">Avg Cost/Unit</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body class="text-center">
@@ -93,6 +94,17 @@
 							<Table.Cell class="pt-2">{lastPrice}</Table.Cell>
 							<Table.Cell class="pt-2">{midPrice}</Table.Cell>
 							<Table.Cell class="pt-2">{Number(position.toFixed(2))}</Table.Cell>
+							<Table.Cell>
+								{#if position !== 0}
+									{new Intl.NumberFormat(undefined, {
+										maximumFractionDigits: 2
+									}).format(
+										serverState.markets.get(id)?.getAverageCostPerUnit(serverState.actingAs) ?? 0
+									)}
+								{:else}
+									-
+								{/if}
+							</Table.Cell>
 						</Table.Row>
 					</Table.Body>
 				</Table.Root>

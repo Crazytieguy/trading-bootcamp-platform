@@ -95,8 +95,7 @@
 	{#if Array.from(serverState.portfolios.values()).length > 0}
 		<div class="pt-8">
 			<h2 class="mb-4 text-xl font-bold">All Portfolios</h2>
-			{#each Array.from(serverState.portfolios.values())
-				.sort((a, b) => (a.accountId === serverState.actingAs ? -1 : b.accountId === serverState.actingAs ? 1 : 0)) as portfolio (portfolio.accountId)}
+			{#each Array.from(serverState.portfolios.values()).sort( (a, b) => (a.accountId === serverState.actingAs ? -1 : b.accountId === serverState.actingAs ? 1 : 0) ) as portfolio (portfolio.accountId)}
 				<div class="mb-4 border p-4">
 					<p>Account: {accountName(portfolio.accountId)}</p>
 					<p>
