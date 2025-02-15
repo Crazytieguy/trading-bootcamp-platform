@@ -153,6 +153,8 @@
 					marketId={id}
 					minSettlement={marketDefinition.minSettlement}
 					maxSettlement={marketDefinition.maxSettlement}
+					{bids}
+					{offers}
 				/>
 				<br />
 				<CreateOrder
@@ -161,6 +163,8 @@
 					marketId={id}
 					minSettlement={marketDefinition.minSettlement}
 					maxSettlement={marketDefinition.maxSettlement}
+					{bids}
+					{offers}
 				/>
 				<div class="pt-8">
 					<Button
