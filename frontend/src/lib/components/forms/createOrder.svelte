@@ -5,6 +5,7 @@
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import { websocket_api } from 'schema-js';
 	import { protoSuperForm } from './protoSuperForm';
+	import Button from '$lib/components/ui/button/button.svelte';
 
 	interface Props {
 		buttonId: string;
@@ -51,20 +52,19 @@
 	const { form: formData, enhance } = form;
 
 	function handleQuickOrder() {
-		const bestPrice = $formData.side === 'BID' 
-			? (offers[0]?.price ?? 0) - 0.01
-			: (bids[0]?.price ?? 0) + 0.01;
-		
+		const bestPrice =
+			$formData.side === 'BID' ? (offers[0]?.price ?? 0) - 0.01 : (bids[0]?.price ?? 0) + 0.01;
+
 		$formData.price = bestPrice;
-		
+
 		const side = $formData.side === 'BID' ? websocket_api.Side.BID : websocket_api.Side.OFFER;
-		sendClientMessage({ 
-			createOrder: { 
-				marketId, 
+		sendClientMessage({
+			createOrder: {
+				marketId,
 				price: bestPrice,
 				size: $formData.size,
 				side
-			} 
+			}
 		});
 	}
 </script>
@@ -129,13 +129,13 @@
 		<Form.Button variant={$formData.side === 'BID' ? 'green' : 'red'} class="flex-1">
 			Place {$formData.side}
 		</Form.Button>
-		<Form.Button
+		<Button
 			type="button"
 			variant={$formData.side === 'BID' ? 'green' : 'red'}
 			class="flex-1"
-			on:click={handleQuickOrder}
+			onclick={handleQuickOrder}
 		>
 			Quick {$formData.side}
-		</Form.Button>
+		</Button>
 	</div>
 </form>
