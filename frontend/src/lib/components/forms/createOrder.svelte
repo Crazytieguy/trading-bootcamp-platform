@@ -7,24 +7,26 @@
 	import { protoSuperForm } from './protoSuperForm';
 
 	interface Props {
+		buttonId: string;
+		side?: string | undefined;
 		marketId: number;
 		minSettlement?: number | null | undefined;
 		maxSettlement?: number | null | undefined;
 	}
 
-	let { marketId, minSettlement, maxSettlement }: Props = $props();
+	let { buttonId, marketId, minSettlement, maxSettlement, side }: Props = $props();
 
 	const initialData = {
 		price: 0,
 		size: 0,
-		side: 'BID'
+		side
 	};
 
 	let bidButton: HTMLButtonElement | null = $state(null);
 	let offerButton: HTMLButtonElement | null = $state(null);
 
 	const form = protoSuperForm(
-		'create-order',
+		`create-order-${buttonId}`,
 		(v) => {
 			const o = websocket_api.CreateOrder.fromObject({ marketId, ...v });
 			const side = o.side === websocket_api.Side.BID ? 'BID' : 'OFFER';

@@ -5,7 +5,7 @@
 </script>
 
 <div class="pt-8">
-	<h1 class="mb-8 text-xl font-bold">Welcome to Tool's Day!</h1>
+	<h1 class="mb-8 text-xl font-bold">Welcome to Tools day!</h1>
 	{#if serverState.portfolio}
 		<div class="flex flex-col gap-4">
 			<p class="text-lg">
@@ -92,22 +92,25 @@
 		</div>
 	{/if}
 
-	{#if serverState.portfolios.size > 0}
-		<div class="mt-8">
-			<h2 class="mb-4 text-lg font-bold">All Portfolios</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-				{#each Array.from(serverState.portfolios.entries()) as [accountId, portfolio]}
-					<div class="rounded border p-4 shadow">
-						<div class="mb-2 font-bold">{accountName(accountId)}</div>
-						<div>
-							Total Balance: {new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(
-								portfolio.totalBalance ?? 0
-							)}
-						</div>
-						<!-- Add any additional portfolio fields as needed -->
-					</div>
-				{/each}
-			</div>
+	{#if Array.from(serverState.portfolios.values()).length > 0}
+		<div class="pt-8">
+			<h2 class="mb-4 text-xl font-bold">All Portfolios</h2>
+			{#each Array.from(serverState.portfolios.values()).sort( (a, b) => (a.accountId === serverState.actingAs ? -1 : b.accountId === serverState.actingAs ? 1 : 0) ) as portfolio (portfolio.accountId)}
+				<div class="mb-4 border p-4">
+					<p>Account: {accountName(portfolio.accountId)}</p>
+					<p>
+						Total Balance: {new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(
+							portfolio.totalBalance ?? 0
+						)}
+					</p>
+					<p>
+						Available Balance: {new Intl.NumberFormat(undefined, {
+							maximumFractionDigits: 4
+						}).format(portfolio.availableBalance ?? 0)}
+					</p>
+					<!-- ...display additional portfolio details if needed... -->
+				</div>
+			{/each}
 		</div>
 	{/if}
 </div>

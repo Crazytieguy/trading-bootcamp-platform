@@ -63,6 +63,10 @@
 		);
 		const total = positions.reduce((acc, pos) => acc + pos, 0);
 		return positions.length ? total / positions.length : 0;
+	const spread = $derived(() => {
+		const lowestOffer = offers[0]?.price;
+		const highestBid = bids[0]?.price;
+		return lowestOffer && highestBid ? lowestOffer - highestBid : 0;
 	});
 </script>
 
@@ -95,16 +99,38 @@
 						<Table.Row>
 							<Table.Head class="text-center">Last price</Table.Head>
 							<Table.Head class="text-center">Mid price</Table.Head>
+							<Table.Head class="text-center">Spread</Table.Head>
 							<Table.Head class="text-center">Your Position</Table.Head>
 							<Table.Head class="text-center">Average Position (78-82)</Table.Head>
+							<Table.Head class="text-center">Our Avg Cost/Unit</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body class="text-center">
 						<Table.Row>
 							<Table.Cell class="pt-2">{lastPrice}</Table.Cell>
 							<Table.Cell class="pt-2">{midPrice}</Table.Cell>
+							<Table.Cell class="pt-2">
+								{#if spread !== undefined}
+									{new Intl.NumberFormat(undefined, {
+										maximumFractionDigits: 2
+									}).format(spread())}
+								{:else}
+									-
+								{/if}
+							</Table.Cell>
 							<Table.Cell class="pt-2">{Number(position.toFixed(2))}</Table.Cell>
 							<Table.Cell class="pt-2">{Number(averagePosition().toFixed(2))}</Table.Cell>
+							<Table.Cell>
+								{#if position !== 0}
+									{new Intl.NumberFormat(undefined, {
+										maximumFractionDigits: 2
+									}).format(
+										serverState.markets.get(id)?.getAverageCostPerUnit(serverState.actingAs) ?? 0
+									)}
+								{:else}
+									-
+								{/if}
+							</Table.Cell>
 						</Table.Row>
 					</Table.Body>
 				</Table.Root>
@@ -122,6 +148,16 @@
 		{#if marketDefinition.open && displayTransactionId === undefined}
 			<div>
 				<CreateOrder
+					side={'BID'}
+					buttonId="BID"
+					marketId={id}
+					minSettlement={marketDefinition.minSettlement}
+					maxSettlement={marketDefinition.maxSettlement}
+				/>
+				<br />
+				<CreateOrder
+					side={'OFFER'}
+					buttonId="OFFER"
 					marketId={id}
 					minSettlement={marketDefinition.minSettlement}
 					maxSettlement={marketDefinition.maxSettlement}
