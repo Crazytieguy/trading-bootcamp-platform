@@ -54,6 +54,11 @@
 	const lastPrice = $derived(trades[trades.length - 1]?.price || '');
 	const midPrice = $derived(getMidPrice(bids, offers));
 	const isRedeemable = $derived(marketDefinition.redeemableFor?.length);
+	const spread = $derived(() => {
+		const lowestOffer = offers[0]?.price;
+		const highestBid = bids[0]?.price;
+		return lowestOffer && highestBid ? lowestOffer - highestBid : 0;
+	});
 </script>
 
 <div class="flex-grow py-8">
@@ -85,6 +90,7 @@
 						<Table.Row>
 							<Table.Head class="text-center">Last price</Table.Head>
 							<Table.Head class="text-center">Mid price</Table.Head>
+							<Table.Head class="text-center">Spread</Table.Head>
 							<Table.Head class="text-center">Your Position</Table.Head>
 							<Table.Head class="text-center">Our Avg Cost/Unit</Table.Head>
 						</Table.Row>
@@ -93,6 +99,15 @@
 						<Table.Row>
 							<Table.Cell class="pt-2">{lastPrice}</Table.Cell>
 							<Table.Cell class="pt-2">{midPrice}</Table.Cell>
+							<Table.Cell class="pt-2">
+								{#if spread !== undefined}
+									{new Intl.NumberFormat(undefined, {
+										maximumFractionDigits: 2
+									}).format(spread())}
+								{:else}
+									-
+								{/if}
+							</Table.Cell>
 							<Table.Cell class="pt-2">{Number(position.toFixed(2))}</Table.Cell>
 							<Table.Cell>
 								{#if position !== 0}
@@ -122,14 +137,14 @@
 		{#if marketDefinition.open && displayTransactionId === undefined}
 			<div>
 				<CreateOrder
-				side={'BID'}
+					side={'BID'}
 					marketId={id}
 					minSettlement={marketDefinition.minSettlement}
 					maxSettlement={marketDefinition.maxSettlement}
 				/>
-				<br/>
+				<br />
 				<CreateOrder
-				side={'OFFER'}
+					side={'OFFER'}
 					marketId={id}
 					minSettlement={marketDefinition.minSettlement}
 					maxSettlement={marketDefinition.maxSettlement}
