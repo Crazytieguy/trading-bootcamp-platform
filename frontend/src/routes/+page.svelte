@@ -1,11 +1,11 @@
 <script>
-	import { serverState } from '$lib/api.svelte';
+	import { serverState, accountName } from '$lib/api.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import MarketName from './marketName.svelte';
 </script>
 
 <div class="pt-8">
-	<h1 class="mb-8 text-xl font-bold">Welcome to Trading Bootcamp!</h1>
+	<h1 class="mb-8 text-xl font-bold">Welcome to Tool's Day!</h1>
 	{#if serverState.portfolio}
 		<div class="flex flex-col gap-4">
 			<p class="text-lg">
@@ -89,6 +89,25 @@
 					{/each}
 				</div>
 			{/if}
+		</div>
+	{/if}
+
+	{#if serverState.portfolios.size > 0}
+		<div class="mt-8">
+			<h2 class="mb-4 text-lg font-bold">All Portfolios</h2>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				{#each Array.from(serverState.portfolios.entries()) as [accountId, portfolio]}
+					<div class="rounded border p-4 shadow">
+						<div class="mb-2 font-bold">{accountName(accountId)}</div>
+						<div>
+							Total Balance: {new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(
+								portfolio.totalBalance ?? 0
+							)}
+						</div>
+						<!-- Add any additional portfolio fields as needed -->
+					</div>
+				{/each}
+			</div>
 		</div>
 	{/if}
 </div>
