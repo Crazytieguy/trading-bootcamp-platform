@@ -5,9 +5,10 @@
 
 	let id = $derived(Number($page.params.id));
 	// let marketData0 = $derived(Number.isNaN(id) ? undefined : serverState.markets.get(id));
-	let marketData0 = $derived(serverState.markets.get(52)); // Hardcoded ID 1
-	let marketData1 = $derived(serverState.markets.get(53)); // Hardcoded ID 2
-	let marketData2 = $derived(serverState.markets.get(54)); // Hardcoded ID 3
+	let marketData0 = $derived(serverState.markets.get(59)); // Hardcoded ID 1
+	let marketData1 = $derived(serverState.markets.get(60)); // Hardcoded ID 2
+	let marketData2 = $derived(serverState.markets.get(61)); // Hardcoded ID 3
+	let marketData3 = $derived(serverState.markets.get(62)); // Hardcoded ID 3
 </script>
 
 <div class="flex-grow py-8">
@@ -25,6 +26,11 @@
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			{#if marketData2}
 				<Market marketData={marketData2} />
+			{/if}
+		</div>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			{#if marketData3}
+				<Market marketData={marketData3} />
 			{/if}
 		</div>
 	{/if}
