@@ -13,12 +13,12 @@
 		maxSettlement?: number | null | undefined;
 	}
 
-	let { marketId, minSettlement, maxSettlement }: Props = $props();
+	let { marketId, minSettlement, maxSettlement, side }: Props = $props();
 
 	const initialData = {
 		price: 0,
 		size: 0,
-		side: 'BID'
+		side
 	};
 
 	let bidButton: HTMLButtonElement | null = $state(null);
