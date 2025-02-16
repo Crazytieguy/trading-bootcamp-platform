@@ -7,8 +7,9 @@ from metagame import TradingClient
 from metagame.websocket_api import Side
 import time
 
+# DELTA < EPSILON ALWAYS
 DELTA = 0.6
-ARB_EPSILON = 2.5
+ARB_EPSILON = 1
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ def arbitrage_etf_sum_lesser_than_parts_1(
                         # Call redeem with market that's combination of components
 
                 # Redeem to net to 0
-                client.redeem(etf_id, -size) if not test else logger.info(
+                client.redeem(etf_id, size) if not test else logger.info(
                     f"Redeemed {size} {etf_market_name}"
                 )
 
@@ -184,7 +185,7 @@ def arbitrage_etf_sum_greater_parts_bot_1(
                         # Call redeem with market that's combination of components
 
                 # Redeem to net to 0
-                client.redeem(etf_id, size) if not test else logger.info(
+                client.redeem(etf_id, -size) if not test else logger.info(
                     f"Redeemed {size} {etf_market_name}"
                 )
 
