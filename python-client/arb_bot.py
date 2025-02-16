@@ -19,6 +19,7 @@ def main(
     jwt: Annotated[str, typer.Option(envvar="JWT")],
     api_url: Annotated[str, typer.Option(envvar="API_URL")],
     act_as: Annotated[int, typer.Option(envvar="ACT_AS")],
+    loop_interval: float = typer.Option(1, help="Time interval for the loop in seconds")  # new CLI argument
 ):
     with TradingClient(api_url, jwt, act_as) as client:
         state = client.state()
@@ -40,6 +41,7 @@ def main(
                 market_tuples=market_tuples,
                 etf_tuples=etf_tuples,
                 expected_profit_for_exchange=exchange_formula,
+                loop_interval=loop_interval  # pass the loop speed argument
             )
         except:
             for market_id, _ in market_tuples:
@@ -60,52 +62,66 @@ def arb_bot(
     market_tuples: List[tuple[int, float]],
     etf_tuples: List[tuple[int, float]],
     expected_profit_for_exchange: Callable[[List[float], List[float]], float],
+    loop_interval: float = 1,  # new parameter for loop speed
 ) -> None:
     # Clear out any existing orders
     for market_id, _ in market_tuples:
         client.out(market_id)
     logger.info(f"Starting market maker bot for markets {[mid for mid, _ in market_tuples]}")
 
+    # Helper function to generate orders
+    def create_orders(
+        instruments: List[tuple[int, float]],
+        prices: List[float],
+        side: Side,
+        is_market: bool,
+    ) -> List[ClientMessage]:
+        orders = []
+        action = "Buying" if side == Side.OFFER else "Selling"
+        for (instr_id, ratio), price in zip(instruments, prices):
+            logger.info(f"{action} {instr_id} at {price}")
+            orders.append(
+                ClientMessage(
+                    create_order=CreateOrder(
+                        market_id=instr_id,
+                        price=price,
+                        size=0.01 * ratio,
+                        side=side,
+                    )
+                )
+            )
+        return orders
+
+    # New helper to get best bids and offers
+    def get_best_prices(
+        instruments: List[tuple[int, float]],
+        state,
+        instrument_type: str,
+    ) -> tuple[List[float], List[float]]:
+        best_bids = []
+        best_offers = []
+        for instr_id, _ in instruments:
+            market = state.markets.get(instr_id)
+            if market is None:
+                logger.info(f"No market data available for {instrument_type} {instr_id}")
+                raise ValueError(f"No market data available for {instrument_type}")
+            bid = market.definition.min_settlement
+            offer = market.definition.max_settlement
+            if market.bids:
+                bid = max(bid_item.price for bid_item in market.bids)
+            if market.offers:
+                offer = min(offer_item.price for offer_item in market.offers)
+            best_bids.append(bid)
+            best_offers.append(offer)
+        return best_bids, best_offers
+
     while True:
-        sleep(1)
+        sleep(loop_interval)
         state = client.state()
 
-        market_best_bids: List[float] = []
-        market_best_offers: List[float] = []
-        etf_best_offers: List[float] = []
-        etf_best_bids: List[float] = []
-
-        # Collect best bids and offers from component markets
-        for market_id, _ in market_tuples:
-            market = state.markets.get(market_id)
-            if market is None:
-                logger.info(f"No market data available for market {market_id}")
-                raise ValueError("No market data available for market")
-
-            best_bid = market.definition.min_settlement
-            best_offer = market.definition.max_settlement
-            if market.bids:
-                best_bid = max(bid.price for bid in market.bids)
-            if market.offers:
-                best_offer = min(offer.price for offer in market.offers)
-            market_best_bids.append(best_bid)
-            market_best_offers.append(best_offer)
-
-        # Get best bid and offer from ETF
-        for etf_id, _ in etf_tuples:
-            etf_market = state.markets.get(etf_id)
-            if etf_market is None:
-                logger.info(f"No market data available for ETF {etf_id}")
-                raise ValueError("No market data available for ETF")
-
-            etf_best_bid = etf_market.definition.min_settlement
-            etf_best_offer = etf_market.definition.max_settlement
-            if etf_market.bids:
-                etf_best_bid = max(bid.price for bid in etf_market.bids)
-            if etf_market.offers:
-                etf_best_offer = min(offer.price for offer in etf_market.offers)
-            etf_best_bids.append(etf_best_bid)
-            etf_best_offers.append(etf_best_offer)
+        # Replace duplicate loops by calling helper
+        market_best_bids, market_best_offers = get_best_prices(market_tuples, state, "market")
+        etf_best_bids, etf_best_offers = get_best_prices(etf_tuples, state, "ETF")
 
         if len(market_best_bids) == len(market_tuples):
             # Calculate profitability in both directions
@@ -119,66 +135,26 @@ def arb_bot(
         if long_profit > 0.01:
             # Long strategy: Buy components, sell ETF
             logger.info(f"Executing long arbitrage (profit: {long_profit})")
-            for (market_id, ratio), bid_price in zip(market_tuples, market_best_bids):
-                market_name = next(name for name, id in state.market_name_to_id.items() if id == market_id)
-                logger.info(f"Buying {market_name} at {bid_price}")
-                orders.append(
-                    ClientMessage(
-                        create_order=CreateOrder(
-                            market_id=market_id,
-                            price=bid_price,
-                            size=0.01 * ratio,
-                            side=Side.OFFER,
-                        )
-                    )
-                )
-            
-            for (etf_id, ratio), best_bid in zip(etf_tuples, etf_best_offers):
-                logger.info(f"Selling ETF at {best_bid}")
-                orders.append(
-                    ClientMessage(
-                        create_order=CreateOrder(
-                            market_id=etf_id,
-                            price=best_bid,
-                            size=0.01 * ratio,
-                            side=Side.BID,
-                        )
-                    )
-                )
+            orders += create_orders(market_tuples, market_best_bids, Side.OFFER, True)
+            orders += create_orders(etf_tuples, etf_best_offers, Side.BID, False)
 
         elif short_profit > 0.01:
             # Short strategy: Sell components, buy ETF
             logger.info(f"Executing short arbitrage (profit: {short_profit})")
-            for (market_id, ratio), offer_price in zip(market_tuples, market_best_offers):
-                market_name = next(name for name, id in state.market_name_to_id.items() if id == market_id)
-                logger.info(f"Selling {market_name} at {offer_price}")
-                orders.append(
-                    ClientMessage(
-                        create_order=CreateOrder(
-                            market_id=market_id,
-                            price=offer_price,
-                            size=0.01 * ratio,
-                            side=Side.BID,
-                        )
-                    )
-                )
-            
-            for (etf_id, ratio), best_bid in zip(etf_tuples, etf_best_bids):
-                logger.info(f"Buying ETF at {best_bid}")
-                orders.append(
-                    ClientMessage(
-                        create_order=CreateOrder(
-                            market_id=etf_id,
-                            price=best_bid,
-                            size=0.01 * ratio,
-                            side=Side.OFFER,
-                        )
-                    )
-                )
+            orders += create_orders(market_tuples, market_best_offers, Side.BID, True)
+            orders += create_orders(etf_tuples, etf_best_bids, Side.OFFER, False)
 
         if orders:
             client.request_many(orders)
             logger.info("Orders executed successfully")
+        else:
+            # cancel all orders:
+            for market_id, _ in market_tuples:
+                client.out(market_id)
+            for etf_id, _ in etf_tuples:
+                client.out(etf_id)
+
+    #def redeem(self, fund_id: int, amount: float) -> websocket_api.Redeemed:
 
 
 
