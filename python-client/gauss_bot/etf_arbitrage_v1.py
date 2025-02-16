@@ -11,6 +11,7 @@ import time
 STOCK_DELTA = 0.51
 ETF_DELTA = 1.51
 ARB_EPISLON = STOCK_DELTA * 3 + ETF_DELTA
+DELAY_BETWEEN_TRADES = 0.05
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ def arbitrage_etf_sum_lesser_than_parts_1(
     test: bool = True,
 ):
     while True:
-        time.sleep(1) if test else time.sleep(0.10)
+        time.sleep(1) if test else time.sleep(DELAY_BETWEEN_TRADES)
 
         state = client.state()
         etf_id = state.market_name_to_id[etf_market_name]
@@ -111,7 +112,7 @@ def arbitrage_etf_sum_lesser_than_parts_1(
 
             else:
                 logger.info(
-                    f"NO arb: ETF={etf_best_offer.price}; SUM={component_total}"
+                    f"NO arb: S-E !({component_total - etf_best_offer.price} > {ARB_EPISLON})"
                 )
 
 
@@ -125,7 +126,7 @@ def arbitrage_etf_sum_greater_parts_bot_1(
     test: bool = True,
 ):
     while True:
-        time.sleep(1) if test else time.sleep(0.10)
+        time.sleep(1) if test else time.sleep(DELAY_BETWEEN_TRADES)
         state = client.state()
         etf_id = state.market_name_to_id[etf_market_name]
         etf_market = state.markets.get(etf_id)
@@ -205,5 +206,5 @@ def arbitrage_etf_sum_greater_parts_bot_1(
                     client.out(market_id)
             else:
                 logger.info(
-                    f"NO arb: opportunity: ETF={etf_best_bid.price}; SUM={component_total}"
+                    f"NO arb: E-S !({etf_best_bid.price - component_total} > {ARB_EPISLON})"
                 )
