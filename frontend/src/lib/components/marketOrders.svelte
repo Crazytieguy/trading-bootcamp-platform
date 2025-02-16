@@ -36,11 +36,12 @@
 
 	const placeBetterBid = () => {
 		if (!bestBid?.marketId || !bestBid?.price) return;
-		// Always place a new bid of size 1
+		// If we already have the best bid, use the same price
+		const price = bestBid.ownerId === serverState.actingAs ? bestBid.price : bestBid.price + 0.01;
 		sendClientMessage({
 			createOrder: {
 				marketId: bestBid.marketId,
-				price: bestBid.price + 0.01,
+				price,
 				size: 1,
 				side: websocket_api.Side.BID
 			}
@@ -49,11 +50,13 @@
 
 	const placeBetterOffer = () => {
 		if (!bestOffer?.marketId || !bestOffer?.price) return;
-		// Always place a new offer of size 1
+		// If we already have the best offer, use the same price
+		const price =
+			bestOffer.ownerId === serverState.actingAs ? bestOffer.price : bestOffer.price - 0.01;
 		sendClientMessage({
 			createOrder: {
 				marketId: bestOffer.marketId,
-				price: bestOffer.price - 0.01,
+				price,
 				size: 1,
 				side: websocket_api.Side.OFFER
 			}
