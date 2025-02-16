@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { sendClientMessage, serverState, type MarketData } from '$lib/api.svelte';
+	import { sendClientMessage, serverState, accountName, type MarketData } from '$lib/api.svelte';
 	import CreateOrder from '$lib/components/forms/createOrder.svelte';
 	import Redeem from '$lib/components/forms/redeem.svelte';
 	import SettleMarket from '$lib/components/forms/settleMarket.svelte';
@@ -19,6 +19,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Table from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
+	import { websocket_api } from 'schema-js';
 
 	let { marketData }: { marketData: MarketData } = $props();
 	let id = $derived(marketData.definition.id);
@@ -54,6 +55,34 @@
 	const lastPrice = $derived(trades[trades.length - 1]?.price || '');
 	const midPrice = $derived(getMidPrice(bids, offers));
 	const isRedeemable = $derived(marketDefinition.redeemableFor?.length);
+
+	// Add new function to calculate participant positions from trades
+	function calculatePositions(trades: websocket_api.ITrade[]) {
+		const positions = new Map<number, number>();
+
+		for (const trade of trades) {
+			const buyerId = Number(trade.buyerId);
+			const sellerId = Number(trade.sellerId);
+			const size = trade.size || 0;
+
+			positions.set(buyerId, (positions.get(buyerId) || 0) + size);
+			positions.set(sellerId, (positions.get(sellerId) || 0) - size);
+		}
+
+		return Array.from(positions.entries())
+			.map(([accountId, position]) => ({
+				accountId,
+				position: Number(position.toFixed(2))
+			}))
+			.sort((a, b) => Math.abs(b.position) - Math.abs(a.position));
+	}
+
+	const participantPositions = $derived(calculatePositions(trades));
+
+	// Move getShortUserName helper into this component
+	const getShortUserName = (id: number | null | undefined) => {
+		return accountName(id).split(' ')[0];
+	};
 </script>
 
 <div class="flex-grow py-8">
@@ -107,8 +136,9 @@
 				<MarketOrders {bids} {offers} {displayTransactionId} />
 			</div>
 		</div>
-		{#if marketDefinition.open && displayTransactionId === undefined}
-			<div>
+		<!-- Add participant positions table -->
+		<div class="min-w-[300px]">
+			{#if marketDefinition.open && displayTransactionId === undefined}
 				<CreateOrder
 					marketId={id}
 					minSettlement={marketDefinition.minSettlement}
@@ -136,7 +166,30 @@
 						/>
 					</div>
 				{/if}
+			{/if}
+
+			<div class="mt-8">
+				<Table.Root>
+					<Table.Header>
+						<Table.Row>
+							<Table.Head class="text-center">Participant</Table.Head>
+							<Table.Head class="text-center">Position</Table.Head>
+						</Table.Row>
+					</Table.Header>
+					<Table.Body>
+						{#each participantPositions as { accountId, position }}
+							<Table.Row>
+								<Table.Cell class="text-center">
+									{accountId === serverState.userId ? 'You' : getShortUserName(accountId)}
+								</Table.Cell>
+								<Table.Cell class="text-center">
+									{position}
+								</Table.Cell>
+							</Table.Row>
+						{/each}
+					</Table.Body>
+				</Table.Root>
 			</div>
-		{/if}
+		</div>
 	</div>
 </div>
