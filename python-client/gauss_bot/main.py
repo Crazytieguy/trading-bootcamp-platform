@@ -29,19 +29,11 @@ def main(
 ):
     logger.info("Bots started!")
     with TradingClient(api_url, jwt, act_as) as client:
-        """
-            penny_bid_bot_v1(
-                client,
-                market_name="At 6PM Saturday, resolves to 20 if I believe a camp participant has >=4000 clips",
-                size=size,
-            )
-        """
-
         arbitrage_etf_sum_greater_parts_bot_1(
             client,
-            etf_market_name="gauss_test_ab",
-            component_market_names=["gauss_test_a", "gauss_test_b"],
-            component_weights=[1, 2],
+            etf_market_name="abc_tw",
+            component_market_names=["alpha_tw", "bravo_tw", "charlie_tw"],
+            component_weights=[2, 2, 2],
             size=0.1,
             test=True,
         )
