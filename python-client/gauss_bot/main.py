@@ -29,13 +29,13 @@ def main(
 ):
     logger.info("Bots started!")
     with TradingClient(api_url, jwt, act_as) as client:
-        arbitrage_etf_sum_greater_parts_bot_1(
+        arbitrage_etf_sum_lesser_than_parts_1(
             client,
             etf_market_name="abc_tw",
             component_market_names=["alpha_tw", "bravo_tw", "charlie_tw"],
             component_weights=[2, 2, 2],
             size=0.1,
-            test=True,
+            test=False,
         )
 
 

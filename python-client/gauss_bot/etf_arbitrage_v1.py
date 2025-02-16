@@ -7,8 +7,8 @@ from metagame import TradingClient
 from metagame.websocket_api import Side
 import time
 
-DELTA = 0.0001
-ARB_EPSILON = 0.2
+DELTA = 0.6
+ARB_EPSILON = 2.5
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ def arbitrage_etf_sum_lesser_than_parts_1(
                     etf_id, etf_best_offer.price + DELTA, size, Side.BID
                 )
 
-                # Buy components
+                # Sell components
                 for market_id, weight, market in zip(
                     component_market_ids, component_weights, component_markets
                 ):
@@ -84,17 +84,20 @@ def arbitrage_etf_sum_lesser_than_parts_1(
                         component_size = size * weight
                         client.create_order(
                             market_id,
-                            market.offers[0].price - DELTA,
+                            market.bids[0].price - DELTA,
                             component_size,
                             Side.OFFER,
                         )
                         # Call redeem with market that's combination of components
 
-                time.sleep(10)  # Wait for orders to process
-
                 # Redeem to net to 0
-                if not test:
-                    client.redeem(etf_id, -size)
+                client.redeem(etf_id, -size) if not test else logger.info(
+                    f"Redeemed {size} {etf_market_name}"
+                )
+
+                time.sleep(1) if test else time.sleep(
+                    0.01
+                )  # Wait for orders to process
 
                 # Be out of all markets because we only trade when we have arbitrage opportunity
                 client.out(etf_id)
@@ -162,7 +165,9 @@ def arbitrage_etf_sum_greater_parts_bot_1(
                 )
 
                 # Sell ETF
-                client.create_order(etf_id, etf_best_bid.price, size, Side.OFFER)
+                client.create_order(
+                    etf_id, etf_best_bid.price - DELTA, size, Side.OFFER
+                )
 
                 # Buy components
                 for market_id, weight, market in zip(
@@ -172,7 +177,7 @@ def arbitrage_etf_sum_greater_parts_bot_1(
                         component_size = size * weight
                         client.create_order(
                             market_id,
-                            market.offers[0].price,
+                            market.offers[0].price + DELTA,
                             component_size,
                             Side.BID,
                         )
