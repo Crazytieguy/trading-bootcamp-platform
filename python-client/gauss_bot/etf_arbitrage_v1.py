@@ -66,7 +66,7 @@ def arbitrage_etf_sum_lesser_than_parts_1(
                 component_total += market.bids[0].price * weight
 
             # padding for different between ETF bid and component sum
-            if can_execute and (etf_best_offer.price - component_total) < (ARB_EPISLON):
+            if can_execute and (component_total - etf_best_offer.price) > ARB_EPISLON:
                 # Arbitrage opportunity found:
                 # Buy ETF at bid price
                 # Sell components at offer prices
