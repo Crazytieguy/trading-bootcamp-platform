@@ -8,8 +8,9 @@ from metagame.websocket_api import Side
 import time
 
 # DELTA < EPSILON ALWAYS
-DELTA = 0.1
-ARB_EPISLON = DELTA * 6 + 1
+STOCK_DELTA = 0.51
+ETF_DELTA = 1.51
+ARB_EPISLON = STOCK_DELTA * 3 + ETF_DELTA
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ def arbitrage_etf_sum_lesser_than_parts_1(
 
                 # Buy ETF
                 client.create_order(
-                    etf_id, etf_best_offer.price + DELTA, size, Side.BID
+                    etf_id, etf_best_offer.price + STOCK_DELTA, size, Side.BID
                 )
 
                 # Sell components
@@ -88,7 +89,7 @@ def arbitrage_etf_sum_lesser_than_parts_1(
                         component_size = size * weight
                         client.create_order(
                             market_id,
-                            market.bids[0].price - DELTA,
+                            market.bids[0].price - ETF_DELTA,
                             component_size,
                             Side.OFFER,
                         )
@@ -172,7 +173,7 @@ def arbitrage_etf_sum_greater_parts_bot_1(
 
                 # Sell ETF
                 client.create_order(
-                    etf_id, etf_best_bid.price - DELTA, size, Side.OFFER
+                    etf_id, etf_best_bid.price - STOCK_DELTA, size, Side.OFFER
                 )
 
                 # Buy components
@@ -183,7 +184,7 @@ def arbitrage_etf_sum_greater_parts_bot_1(
                         component_size = size * weight
                         client.create_order(
                             market_id,
-                            market.offers[0].price + DELTA,
+                            market.offers[0].price + ETF_DELTA,
                             component_size,
                             Side.BID,
                         )
