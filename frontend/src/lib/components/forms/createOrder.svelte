@@ -67,6 +67,21 @@
 			}
 		});
 	}
+
+	function handleSnipe() {
+		const bestPrice =
+			$formData.side === 'BID' ? (bids[0]?.price ?? 0) + 0.01 : (offers[0]?.price ?? 0) - 0.01;
+
+		const side = $formData.side === 'BID' ? websocket_api.Side.BID : websocket_api.Side.OFFER;
+		sendClientMessage({
+			createOrder: {
+				marketId,
+				price: bestPrice,
+				size: $formData.size,
+				side
+			}
+		});
+	}
 </script>
 
 <form use:enhance class="flex flex-col gap-4 text-left">
@@ -136,6 +151,16 @@
 			onclick={handleQuickOrder}
 		>
 			Quick {$formData.side}
+		</Button>
+	</div>
+	<div class="flex">
+		<Button
+			type="button"
+			variant={$formData.side === 'BID' ? 'green' : 'red'}
+			class="flex-1"
+			onclick={handleSnipe}
+		>
+			Snipe {$formData.side}
 		</Button>
 	</div>
 </form>

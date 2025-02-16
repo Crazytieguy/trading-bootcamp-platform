@@ -16,6 +16,7 @@
 	import MarketTrades from '$lib/components/marketTrades.svelte';
 	import PriceChart from '$lib/components/priceChart.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import MarketSelector from '$lib/components/marketSelector.svelte';
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Table from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';

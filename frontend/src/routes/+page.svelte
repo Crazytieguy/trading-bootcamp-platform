@@ -27,10 +27,19 @@
 							<Table.Head class="text-center">Position</Table.Head>
 							<Table.Head class="text-center">Total Bid Size</Table.Head>
 							<Table.Head class="text-center">Total Offer Size</Table.Head>
+							<Table.Head class="text-center">Last Bought</Table.Head>
+							<Table.Head class="text-center">Last Sold</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
 						{#each serverState.portfolio.marketExposures as { marketId, position, totalBidSize, totalOfferSize } (marketId)}
+							{@const marketData = serverState.markets.get(marketId)}
+							{@const lastBought = marketData?.trades.findLast(
+								(t) => t.buyerId === serverState.actingAs
+							)}
+							{@const lastSold = marketData?.trades.findLast(
+								(t) => t.sellerId === serverState.actingAs
+							)}
 							<Table.Row>
 								<Table.Cell>
 									<MarketName market={serverState.markets.get(marketId)?.definition} />
@@ -50,12 +59,37 @@
 										maximumFractionDigits: 2
 									}).format(totalOfferSize ?? 0)}
 								</Table.Cell>
+								<Table.Cell>
+									{#if lastBought}
+										{new Intl.NumberFormat(undefined, {
+											maximumFractionDigits: 2
+										}).format(lastBought.price ?? 0)}
+									{:else}
+										-
+									{/if}
+								</Table.Cell>
+								<Table.Cell>
+									{#if lastSold}
+										{new Intl.NumberFormat(undefined, {
+											maximumFractionDigits: 2
+										}).format(lastSold.price ?? 0)}
+									{:else}
+										-
+									{/if}
+								</Table.Cell>
 							</Table.Row>
 						{/each}
 					</Table.Body>
 				</Table.Root>
 				<div class="md:hidden">
 					{#each serverState.portfolio.marketExposures as { marketId, position, totalBidSize, totalOfferSize } (marketId)}
+						{@const marketData = serverState.markets.get(marketId)}
+						{@const lastBought = marketData?.trades.findLast(
+							(t) => t.buyerId === serverState.actingAs
+						)}
+						{@const lastSold = marketData?.trades.findLast(
+							(t) => t.sellerId === serverState.actingAs
+						)}
 						<div class="flex flex-col gap-4 border-b-2">
 							<div>
 								<span class="font-bold">Market:</span>
@@ -84,6 +118,30 @@
 										maximumFractionDigits: 2
 									}).format(totalOfferSize ?? 0)}</span
 								>
+							</div>
+							<div>
+								<span class="font-bold">Last Bought:</span>
+								<span>
+									{#if lastBought}
+										{new Intl.NumberFormat(undefined, {
+											maximumFractionDigits: 2
+										}).format(lastBought.price ?? 0)}
+									{:else}
+										-
+									{/if}
+								</span>
+							</div>
+							<div>
+								<span class="font-bold">Last Sold:</span>
+								<span>
+									{#if lastSold}
+										{new Intl.NumberFormat(undefined, {
+											maximumFractionDigits: 2
+										}).format(lastSold.price ?? 0)}
+									{:else}
+										-
+									{/if}
+								</span>
 							</div>
 						</div>
 					{/each}
