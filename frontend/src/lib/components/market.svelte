@@ -77,7 +77,22 @@
 			.sort((a, b) => Math.abs(b.position) - Math.abs(a.position));
 	}
 
+	// Calculate the average position among qualifying participants
+	function calculateAveragePosition(positions: { accountId: number; position: number }[]) {
+		const filteredPositions = positions.filter(({ accountId }) => {
+			if (accountId === serverState.userId) return false;
+			const name = accountName(accountId).toLowerCase();
+			return !name.includes('alice') && !name.includes('mark') && !name.includes('bob');
+		});
+
+		if (filteredPositions.length === 0) return 0;
+
+		const sum = filteredPositions.reduce((acc, { position }) => acc + position, 0);
+		return Number((sum / filteredPositions.length).toFixed(2));
+	}
+
 	const participantPositions = $derived(calculatePositions(trades));
+	const averagePosition = $derived(calculateAveragePosition(participantPositions));
 
 	// Move getShortUserName helper into this component
 	const getShortUserName = (id: number | null | undefined) => {
@@ -177,6 +192,10 @@
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
+						<Table.Row class="bg-muted/50">
+							<Table.Cell class="text-center font-bold">Average Position*</Table.Cell>
+							<Table.Cell class="text-center font-bold">{averagePosition}</Table.Cell>
+						</Table.Row>
 						{#each participantPositions as { accountId, position }}
 							<Table.Row>
 								<Table.Cell class="text-center">
@@ -189,6 +208,9 @@
 						{/each}
 					</Table.Body>
 				</Table.Root>
+				<div class="mt-2 text-xs text-muted-foreground">
+					* Average excludes bot accounts and your position
+				</div>
 			</div>
 		</div>
 	</div>
