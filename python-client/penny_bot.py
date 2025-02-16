@@ -21,8 +21,8 @@ def main(
     act_as: Annotated[int, typer.Option(envvar="ACT_AS")],
     market_name: str,
     fair_price: float,
-    size: float = 0.01,
-    position_cap: float = 0.1,
+    size: float = 0.05,
+    position_cap: float = 0.5,
     prior: Optional[float] = None,
 ):
     with TradingClient(api_url, jwt, act_as) as client:
