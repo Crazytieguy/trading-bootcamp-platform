@@ -98,15 +98,12 @@
 					</Table.Body>
 				</Table.Root>
 			{/if}
-			<div
-				class={cn(
-					'flex justify-between gap-8 text-center',
-					displayTransactionId !== undefined && 'min-h-screen'
-				)}
-			>
-				<MarketPositions {trades} />
+			<div class={cn('flex flex-col gap-8', displayTransactionId !== undefined && 'min-h-screen')}>
+				<div class="flex justify-between gap-8">
+					<MarketPositions {trades} />
+					<MarketOrders {bids} {offers} {displayTransactionId} />
+				</div>
 				<MarketTrades {trades} />
-				<MarketOrders {bids} {offers} {displayTransactionId} />
 			</div>
 		</div>
 		{#if marketDefinition.open && displayTransactionId === undefined}

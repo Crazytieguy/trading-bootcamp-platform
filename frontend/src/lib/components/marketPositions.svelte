@@ -78,19 +78,19 @@
 
 	const getShortTraderName = (id: number) => {
 		const name = accountName(id);
-		return name.substring(5);
+		return name.substring(6);
 	};
 </script>
 
 <div>
 	<Table.Root>
 		<Table.Header>
-			<Table.Row class="grid h-full grid-cols-[3.5rem_3rem_4rem_4rem_4rem]">
-				<Table.Head class="text-center font-mono text-xs">Trader</Table.Head>
-				<Table.Head class="text-center font-mono text-xs">Pos</Table.Head>
-				<Table.Head class="text-center font-mono text-xs">Avg</Table.Head>
-				<Table.Head class="text-center font-mono text-xs">High</Table.Head>
-				<Table.Head class="text-center font-mono text-xs">Low</Table.Head>
+			<Table.Row class="grid h-full grid-cols-[8rem_3rem_4rem_4rem_4rem]">
+				<Table.Head class="text-center font-mono">Trader</Table.Head>
+				<Table.Head class="text-center font-mono">Pos</Table.Head>
+				<Table.Head class="text-center font-mono">Avg</Table.Head>
+				<Table.Head class="text-center font-mono">High</Table.Head>
+				<Table.Head class="text-center font-mono">Low</Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
@@ -99,16 +99,16 @@
 					<Table.Cell class="truncate px-0.5 py-0.5 text-center font-mono text-xs">
 						{getShortTraderName(position.userId)}
 					</Table.Cell>
-					<Table.Cell class="px-0.5 py-0.5 text-center font-mono text-xs">
+					<Table.Cell class="px-0.5 py-0.5 text-center font-mono">
 						{position.position.toFixed(1)}
 					</Table.Cell>
-					<Table.Cell class="px-0.5 py-0.5 text-center font-mono text-xs">
+					<Table.Cell class="px-0.5 py-0.5 text-center font-mono">
 						{position.avgPrice.toFixed(2)}
 					</Table.Cell>
-					<Table.Cell class="px-0.5 py-0.5 text-center font-mono text-xs">
+					<Table.Cell class="px-0.5 py-0.5 text-center font-mono">
 						{position.highestBuyPrice.toFixed(2)}
 					</Table.Cell>
-					<Table.Cell class="px-0.5 py-0.5 text-center font-mono text-xs">
+					<Table.Cell class="px-0.5 py-0.5 text-center font-mono">
 						{position.lowestSellPrice.toFixed(2)}
 					</Table.Cell>
 				</Table.Row>
