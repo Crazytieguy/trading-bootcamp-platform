@@ -8,8 +8,8 @@ from metagame.websocket_api import Side
 import time
 
 # DELTA < EPSILON ALWAYS
-DELTA = 0.6
-ARB_EPSILON = 1
+DELTA = 0.1
+ARB_EPSILON = 0.5
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

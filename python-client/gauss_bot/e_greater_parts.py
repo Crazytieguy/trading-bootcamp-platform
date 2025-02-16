@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from metagame import TradingClient
 from metagame.websocket_api import Side
 import time
-from penny_bot import penny_bid_bot_v1
 from etf_arbitrage_v1 import (
     arbitrage_etf_sum_lesser_than_parts_1,
     arbitrage_etf_sum_greater_parts_bot_1,
@@ -29,7 +28,7 @@ def main(
 ):
     logger.info("Bots started!")
     with TradingClient(api_url, jwt, act_as) as client:
-        arbitrage_etf_sum_lesser_than_parts_1(
+        arbitrage_etf_sum_greater_parts_bot_1(
             client,
             etf_market_name="abc_tw",
             component_market_names=["alpha_tw", "bravo_tw", "charlie_tw"],
