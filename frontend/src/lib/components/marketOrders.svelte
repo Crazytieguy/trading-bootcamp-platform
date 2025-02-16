@@ -5,7 +5,7 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
-	import type { websocket_api } from 'schema-js';
+	import { websocket_api } from 'schema-js';
 	import { onMount, onDestroy } from 'svelte';
 
 	let { bids, offers, displayTransactionId } = $props<{
@@ -17,6 +17,22 @@
 	const cancelOrder = (id: number) => {
 		sendClientMessage({ cancelOrder: { id } });
 	};
+
+	const takeOrder = (order: websocket_api.IOrder) => {
+		const side =
+			order.side === websocket_api.Side.BID ? websocket_api.Side.OFFER : websocket_api.Side.BID;
+		sendClientMessage({
+			createOrder: {
+				marketId: order.marketId,
+				price: order.price,
+				size: order.size,
+				side
+			}
+		});
+	};
+
+	const bestBid = $derived(bids[0]);
+	const bestOffer = $derived(offers[0]);
 </script>
 
 <div>
@@ -48,6 +64,12 @@
 									variant="inverted"
 									class="h-6 w-6 rounded-2xl px-2"
 									onclick={() => cancelOrder(order.id)}>X</Button
+								>
+							{:else if order.ownerId !== serverState.actingAs && order === bestBid && displayTransactionId === undefined}
+								<Button
+									variant="inverted"
+									class="h-6 w-6 rounded-2xl px-1 text-xs"
+									onclick={() => takeOrder(order)}>Take</Button
 								>
 							{/if}
 						</Table.Cell>
@@ -101,6 +123,12 @@
 									variant="inverted"
 									class="h-6 w-6 rounded-2xl px-2"
 									onclick={() => cancelOrder(order.id)}>X</Button
+								>
+							{:else if order.ownerId !== serverState.actingAs && order === bestOffer && displayTransactionId === undefined}
+								<Button
+									variant="inverted"
+									class="h-6 w-6 rounded-2xl px-1 text-xs"
+									onclick={() => takeOrder(order)}>Take</Button
 								>
 							{/if}
 						</Table.Cell>
