@@ -9,7 +9,7 @@ import time
 
 # DELTA < EPSILON ALWAYS
 DELTA = 0.1
-ARB_EPSILON = 0.5
+ARB_EPISLON = DELTA * 6 + 1
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ def arbitrage_etf_sum_lesser_than_parts_1(
     *,
     etf_market_name: str,
     component_market_names: list[str],
-    component_weights: list[float],
+    component_weights: list[int],
     size: float = 0.1,
     test: bool = True,
 ):
@@ -48,6 +48,9 @@ def arbitrage_etf_sum_lesser_than_parts_1(
             if etf_market.offers
             else None
         )
+        logger.info(
+            f"{time.time()} etf_best_offer: {etf_best_offer.price if etf_best_offer else None}"
+        )
 
         if etf_best_offer:
             # Calculate weighted sum of component ask prices
@@ -63,13 +66,13 @@ def arbitrage_etf_sum_lesser_than_parts_1(
                 component_total += market.bids[0].price * weight
 
             # padding for different between ETF bid and component sum
-            if can_execute and (etf_best_offer.price - component_total) < ARB_EPSILON:
+            if can_execute and (etf_best_offer.price - component_total) < (ARB_EPISLON):
                 # Arbitrage opportunity found:
                 # Buy ETF at bid price
                 # Sell components at offer prices
                 # Redeem to end up zero
                 logger.info(
-                    f"Found arbitrage: ETF offer {etf_best_offer.price} < components sum {component_total}"
+                    f"YES arb: EV={component_total - etf_best_offer.price}; ETF={etf_best_offer.price} < SUM={component_total}"
                 )
 
                 # Buy ETF
@@ -107,7 +110,7 @@ def arbitrage_etf_sum_lesser_than_parts_1(
 
             else:
                 logger.info(
-                    f"No arbitrage opportunity: ETF offer={etf_best_offer.price}; components sum={component_total}"
+                    f"NO arb: ETF={etf_best_offer.price}; SUM={component_total}"
                 )
 
 
@@ -116,7 +119,7 @@ def arbitrage_etf_sum_greater_parts_bot_1(
     *,
     etf_market_name: str,
     component_market_names: list[str],
-    component_weights: list[float],
+    component_weights: list[int],
     size: float = 0.1,
     test: bool = True,
 ):
@@ -143,7 +146,9 @@ def arbitrage_etf_sum_greater_parts_bot_1(
             if etf_market.bids
             else None
         )
-        logger.info(f"etf_best_bid: {etf_best_bid.price if etf_best_bid else None}")
+        logger.info(
+            f"{time.time()} etf_best_bid: {etf_best_bid.price if etf_best_bid else None}"
+        )
 
         if etf_best_bid:
             # Calculate weighted sum of component ask prices
@@ -156,13 +161,13 @@ def arbitrage_etf_sum_greater_parts_bot_1(
                 component_total += market.offers[0].price * weight
 
             # padding for different between ETF bid and component sum
-            if can_execute and (etf_best_bid.price - component_total) > ARB_EPSILON:
+            if can_execute and (etf_best_bid.price - component_total) > (ARB_EPISLON):
                 # Arbitrage opportunity found:
                 # Sell ETF at bid price
                 # Buy components at offer prices
                 # Redeem to end up zero
                 logger.info(
-                    f"Found arbitrage: ETF bid {etf_best_bid.price} > components sum {component_total}"
+                    f"YES arb: EV={etf_best_bid.price - component_total}; ETF={etf_best_bid.price} > SUM={component_total}"
                 )
 
                 # Sell ETF
@@ -199,5 +204,5 @@ def arbitrage_etf_sum_greater_parts_bot_1(
                     client.out(market_id)
             else:
                 logger.info(
-                    f"No arbitrage opportunity: ETF offer={etf_best_bid.price}; components sum={component_total}"
+                    f"NO arb: opportunity: ETF={etf_best_bid.price}; SUM={component_total}"
                 )

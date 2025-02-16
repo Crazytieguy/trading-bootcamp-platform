@@ -4,12 +4,10 @@ from typing import Annotated
 import typer
 from dotenv import load_dotenv
 from metagame import TradingClient
-from metagame.websocket_api import Side
-import time
 from etf_arbitrage_v1 import (
     arbitrage_etf_sum_lesser_than_parts_1,
-    arbitrage_etf_sum_greater_parts_bot_1,
 )
+from constants import etf_market, component_markets, component_weights
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,9 +28,9 @@ def main(
     with TradingClient(api_url, jwt, act_as) as client:
         arbitrage_etf_sum_lesser_than_parts_1(
             client,
-            etf_market_name="abc_tw",
-            component_market_names=["alpha_tw", "bravo_tw", "charlie_tw"],
-            component_weights=[2, 2, 2],
+            etf_market_name=etf_market["abc"],
+            component_market_names=component_markets["abc"],
+            component_weights=component_weights["abc"],
             size=0.1,
             test=False,
         )
