@@ -19,7 +19,8 @@ def main(
     jwt: Annotated[str, typer.Option(envvar="JWT")],
     api_url: Annotated[str, typer.Option(envvar="API_URL")],
     act_as: Annotated[int, typer.Option(envvar="ACT_AS")],
-    loop_interval: float = typer.Option(1, help="Time interval for the loop in seconds")  # new CLI argument
+    loop_interval: float = typer.Option(1, help="Time interval for the loop in seconds"),
+    max_size: float = typer.Option(0.01, help="Maximum order size factor")  # new CLI argument
 ):
     with TradingClient(api_url, jwt, act_as) as client:
         state = client.state()
@@ -41,7 +42,8 @@ def main(
                 market_tuples=market_tuples,
                 etf_tuples=etf_tuples,
                 expected_profit_for_exchange=exchange_formula,
-                loop_interval=loop_interval  # pass the loop speed argument
+                loop_interval=loop_interval,
+                max_size=max_size  # pass the max_size argument
             )
         except:
             for market_id, _ in market_tuples:
@@ -62,7 +64,8 @@ def arb_bot(
     market_tuples: List[tuple[int, float]],
     etf_tuples: List[tuple[int, float]],
     expected_profit_for_exchange: Callable[[List[float], List[float]], float],
-    loop_interval: float = 1,  # new parameter for loop speed
+    loop_interval: float = 1,
+    max_size: float = 0.01,  # new parameter for order size
 ) -> None:
     # Clear out any existing orders
     for market_id, _ in market_tuples:
@@ -85,7 +88,7 @@ def arb_bot(
                     create_order=CreateOrder(
                         market_id=instr_id,
                         price=price,
-                        size=0.01 * ratio,
+                        size=max_size * ratio,  # use max_size instead of 0.01
                         side=side,
                     )
                 )
