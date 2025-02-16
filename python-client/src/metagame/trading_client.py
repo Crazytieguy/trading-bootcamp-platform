@@ -345,6 +345,24 @@ class TradingClient:
         else:
             self.close(CloseCode.INTERNAL_ERROR)
 
+    def get_highest_bid(self, market_id: int) -> float:
+        """
+        Get the highest value bid price for a market.
+        """
+        market_data = self._state.markets.get(market_id)
+        if market_data and market_data.bids:
+            return market_data.bids[0].price
+        return 0.0
+
+    def get_lowest_offer(self, market_id: int) -> float:
+        """
+        Get the lowest value offer price for a market.
+        """
+        market_data = self._state.markets.get(market_id)
+        if market_data and market_data.offers:
+            return market_data.offers[0].price
+        return float("inf")
+
 
 @dataclass
 class MarketData:
