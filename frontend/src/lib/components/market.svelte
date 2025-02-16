@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { sendClientMessage, serverState, type MarketData } from '$lib/api.svelte';
+	import { sendClientMessage, serverState, type MarketData, accountName } from '$lib/api.svelte';
 	import CreateOrder from '$lib/components/forms/createOrder.svelte';
 	import Redeem from '$lib/components/forms/redeem.svelte';
 	import SettleMarket from '$lib/components/forms/settleMarket.svelte';
@@ -16,7 +16,6 @@
 	import MarketTrades from '$lib/components/marketTrades.svelte';
 	import PriceChart from '$lib/components/priceChart.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import MarketSelector from '$lib/components/marketSelector.svelte';
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Table from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
@@ -59,6 +58,24 @@
 		const lowestOffer = offers[0]?.price;
 		const highestBid = bids[0]?.price;
 		return lowestOffer && highestBid ? lowestOffer - highestBid : 0;
+	});
+
+	const teamPositions = $derived(() => {
+		const teams = new Map<string, number>();
+
+		trades.forEach((trade) => {
+			if (!trade.buyerId || !trade.sellerId || !trade.size) return;
+
+			const buyerTeam = accountName(trade.buyerId);
+			const sellerTeam = accountName(trade.sellerId);
+
+			teams.set(buyerTeam, (teams.get(buyerTeam) || 0) + trade.size);
+			teams.set(sellerTeam, (teams.get(sellerTeam) || 0) - trade.size);
+		});
+
+		return Array.from(teams.entries())
+			.sort(([a], [b]) => a.localeCompare(b))
+			.map(([team, position]) => ({ team, position }));
 	});
 </script>
 
@@ -125,6 +142,27 @@
 					</Table.Body>
 				</Table.Root>
 			{/if}
+				<Table.Root class="mt-4 font-bold">
+					<Table.Header>
+						<Table.Row>
+							{#each teamPositions() as { team }}
+								<Table.Head class="text-center">{team}</Table.Head>
+							{/each}
+						</Table.Row>
+					</Table.Header>
+					<Table.Body>
+						<Table.Row>
+							{#each teamPositions() as { position }}
+								<Table.Cell class="text-center">
+									{new Intl.NumberFormat(undefined, {
+										maximumFractionDigits: 2,
+										signDisplay: 'always'
+									}).format(position)}
+								</Table.Cell>
+							{/each}
+						</Table.Row>
+					</Table.Body>
+				</Table.Root>
 			<div
 				class={cn(
 					'flex justify-between gap-8 text-center',

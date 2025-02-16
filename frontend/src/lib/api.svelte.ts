@@ -33,7 +33,7 @@ export class MarketData {
 		for (const trade of relevantTrades) {
 			const units = trade.buyerId === accountId ? trade.size || 0 : -(trade.size || 0);
 			totalUnits += units;
-			totalCost += units * (trade.price || 0);
+			totalCost += units * (trade.price || 0) * trade.buyerId === accountId ? 1 : -1;
 		}
 
 		return totalUnits !== 0 ? totalCost / totalUnits : undefined;
@@ -349,5 +349,3 @@ socket.onmessage = (event: MessageEvent) => {
 		authenticate();
 	}
 };
-
-
