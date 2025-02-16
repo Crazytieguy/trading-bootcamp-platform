@@ -28,7 +28,9 @@ def main(
         etf_id = state.market_name_to_id["abc_tw"]
 
         def exchange_formula(m_prices, e_prices) -> float:
-            return sum(m_prices) - sum(e_prices)
+            s1 = sum((m*2 for m in m_prices))
+            s2 = sum(e_prices)
+            return s1-s2
 
         try:
             arb_bot(
