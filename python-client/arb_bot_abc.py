@@ -19,6 +19,8 @@ def main(
     jwt: Annotated[str, typer.Option(envvar="JWT")],
     api_url: Annotated[str, typer.Option(envvar="API_URL")],
     act_as: Annotated[int, typer.Option(envvar="ACT_AS")],
+    loop_interval: float = typer.Option(1, help="Time interval for the loop in seconds"),
+    max_size: float = typer.Option(0.01, help="Maximum order size factor")
 ):
     act_as = 102
     with TradingClient(api_url, jwt, act_as) as client:
@@ -47,6 +49,8 @@ def main(
                 market_tuples=market_tuples,
                 etf_tuples=etf_tuples,
                 expected_profit_for_exchange=exchange_formula,
+                loop_interval=loop_interval,
+                max_size=max_size
             )
         except:
             for market_id, _ in market_tuples:
