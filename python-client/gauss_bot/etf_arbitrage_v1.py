@@ -1,8 +1,5 @@
 import logging
-from typing import Annotated
 
-import typer
-from dotenv import load_dotenv
 from metagame import TradingClient
 from metagame.websocket_api import Side
 import time
@@ -11,7 +8,7 @@ import time
 STOCK_DELTA = 0.51
 ETF_DELTA = 1.51
 ARB_EPISLON = STOCK_DELTA * 3 + ETF_DELTA
-DELAY_BETWEEN_TRADES = 0.05
+DELAY_BETWEEN_TRADES = 0.36
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

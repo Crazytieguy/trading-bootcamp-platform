@@ -32,7 +32,7 @@ def main(
             etf_market_name=etf_market["abc"],
             component_market_names=component_markets["abc"],
             component_weights=component_weights["abc"],
-            size=0.1,
+            size=0.9,
             test=False,
         )
 
