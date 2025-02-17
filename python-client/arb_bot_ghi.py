@@ -20,7 +20,7 @@ def main(
     api_url: Annotated[str, typer.Option(envvar="API_URL")],
     act_as: Annotated[int, typer.Option(envvar="ACT_AS")],
 ):
-    act_as = 21
+    act_as = 104
     with TradingClient(api_url, jwt, act_as) as client:
         state = client.state()
         market_tuples = [
