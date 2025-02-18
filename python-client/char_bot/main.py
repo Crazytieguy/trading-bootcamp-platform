@@ -17,9 +17,11 @@ app = typer.Typer(pretty_exceptions_show_locals=False)
 
 @app.command()
 def main(
-    market_name: str = "bond_test",
+    market_name: str = "golf_mon",
     price_down: str = "buy",
     price_up: str = "sell",
+    diff_percent: int = 10,
+    recovery_percent: int = 5,
     size: float = 100.0,
 ):
     logger.info("Bots started!")
@@ -42,9 +44,12 @@ def main(
             market_name=market_name,
             price_up=price_up,
             price_down=price_down,
+            diff_percent=diff_percent,
+            recovery_percent=recovery_percent,
             size=0.1,
-            test=True,
+            test=False,
         )
+
 
 if __name__ == "__main__":
     app()
